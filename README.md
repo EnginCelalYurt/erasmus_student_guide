@@ -1,4 +1,4 @@
-# erasmus\_student\_guide
+# erasmus_student_guide
 
 A student-powered mobile guide for Erasmus students.
 
@@ -23,4 +23,3 @@ The initial version will focus only on Lodz University of Technology (Politechni
 - Android Studio
 - Kotlin
 - Jetpack Compose
-
