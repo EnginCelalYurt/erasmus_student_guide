@@ -38,15 +38,13 @@ guides and experiences; incoming students read them before and after arrival.
 **Assumptions (not verified yet)**
 - Current students are willing to write reviews and guides voluntarily.
 - Student reviews help more than official course descriptions when choosing courses.
-- Exchange students receive a TUL e-mail address that can be used for sign-in.
 
-*No user interviews have been conducted yet.*
 
 ## 4. User stories
 
 ### US-1: Find guides and experiences
-**As an** incoming Erasmus student, **I want to** browse guides and experiences shared by
-other TUL students, **so that** I can prepare for my first weeks without searching many sources.
+As an incoming Erasmus student, I want to browse guides and experiences shared by
+other TUL students, so that I can prepare for my first weeks without searching many sources.
 
 **Acceptance criteria**
 - [ ] Content can be filtered by category (e.g. Dormitories, Transport, Emergency, Student Life).
@@ -55,8 +53,8 @@ other TUL students, **so that** I can prepare for my first weeks without searchi
 - [ ] Reading does not require signing in.
 
 ### US-2: Share my experience
-**As a** current TUL Erasmus student, **I want to** sign in with my TUL e-mail and share a
-review, guide or tip, **so that** future students benefit from what I learned.
+As a current TUL Erasmus student, I want to sign in with my TUL e-mail and share a
+review, guide or tip, so that future students benefit from what I learned.
 
 **Acceptance criteria**
 - [ ] Only TUL e-mail addresses can sign in; other addresses see an error message.
@@ -65,8 +63,8 @@ review, guide or tip, **so that** future students benefit from what I learned.
 - [ ] A published post appears for other users.
 
 ### US-3: Course reviews
-**As an** incoming Erasmus student, **I want to** read other students' reviews of TUL courses,
-**so that** I can choose my Learning Agreement courses with more confidence.
+As an incoming Erasmus student, I want to read other students' reviews of TUL courses,
+so that I can choose my Learning Agreement courses with more confidence.
 
 **Acceptance criteria**
 - [ ] Searching "mobile" shows only courses whose name or code contains "mobile".
@@ -90,7 +88,7 @@ an incoming student finds it through search or category → votes it helpful →
 - Universities other than TUL
 - Official TUL single sign-on (USOS); we verify by TUL e-mail instead
 - Automatic content filtering and an admin panel (moderation = report button + manual review)
-- Push notifications, offline mode, languages other than English
+- Push notifications, offline mode
 - Optimised desktop layout (mobile first)
 
 ## 6. Challenging our assumptions
