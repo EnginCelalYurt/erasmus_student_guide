@@ -87,7 +87,7 @@ an incoming student finds it through search or category → votes it helpful →
 **Out of scope**
 - Universities other than TUL
 - Official TUL single sign-on (USOS); we verify by TUL e-mail instead
-- Automatic content filtering and an admin panel (moderation = report button + manual review)
+- Automatic content filtering and an admin panel (moderation = community voting: posts with many not-helpful votes are hidden automatically)
 - Push notifications, offline mode
 - Optimised desktop layout (mobile first)
 
@@ -109,14 +109,19 @@ an incoming student finds it through search or category → votes it helpful →
 | Risk | Mitigation |
 |---|---|
 | Not enough students write content (cold start) | Team writes the first content from its own experience |
-| TUL e-mail sign-in not possible / unclear domain | Verify early; fallback: any e-mail + manual approval |
 | Backend (Firebase) is new for the team | Build sign-in + one shared collection first, then extend |
-| Wrong or outdated information | Helpful / not-helpful voting + report button |
+| Wrong or outdated information | Helpful / not-helpful voting; posts with at least 5 votes and more not-helpful than helpful votes are hidden automatically, so moderation works without the team |
 
 ## 9. Team responsibilities and initial tasks 
 
-| Member | Responsibility | First task |
-|---|---|---|
-| Yusuf Taskin | Flutter UI and prototype | Push the prototype version to the repo; apply peer-feedback fixes |
-| Engin Yurt | Documentation, repository, testing | Project brief, acceptance-criteria tests, branch + pull-request workflow |
-| Aldiyar Kairolla | Backend and research | Firebase sign-in prototype; confirm TUL e-mail domain; verify guide content |
+**Done so far:** Yusuf Taskin – Flutter prototype (deployed on Netlify) · Engin Yurt – repository, README, project brief
+
+Each member has about 10 hours of implementation and 3 hours of testing and fixes (25-hour budget per student).
+
+| Member | Implementation (~10 h) | Tests and fixes (~3 h) | Also responsible for |
+|---|---|---|---|
+| Yusuf Taskin | Peer-feedback fixes (contrast, save confirmation, faculty tags) + guide/tip sharing form | Testing his screens | Pushing the prototype code to the repository |
+| Aldiyar Kairolla | Firebase setup, TUL e-mail sign-in, database structure | Testing the sign-in flow | Confirming the TUL e-mail domain |
+| Engin Yurt | Helpful / not-helpful voting, Wilson score ranking with unit tests, automatic hiding of low-rated posts | Acceptance-criteria tests for all user stories | Project brief, branch + pull-request workflow, submissions |
+
+**Priorities:** Must: sign-in, shared course reviews, voting with Wilson ranking. Should: guide/tip sharing, automatic hiding of low-rated posts. Could: planner and checklist updates.
