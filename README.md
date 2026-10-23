@@ -20,6 +20,6 @@ The initial version will focus only on Lodz University of Technology (Politechni
 
 ## Development Environment
 
-- Android Studio
-- Kotlin
-- Jetpack Compose
+- Android Studio / VS Code
+- Dart
+- Flutter
