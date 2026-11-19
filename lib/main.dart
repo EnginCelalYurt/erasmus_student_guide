@@ -43,7 +43,7 @@ class _UniversityGuideAppState extends State<UniversityGuideApp> {
       listenable: _app,
       builder: (context, _) {
         return MaterialApp(
-          title: 'Campus & University Guide',
+          title: 'Erasmus Student Guide',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
