@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'data/auth_service.dart';
-import 'data/fake_auth_service.dart';
-import 'data/in_memory_tip_repository.dart';
+import 'data/local_tip_repository.dart';
+import 'data/persistent_auth_service.dart';
 import 'data/tip_repository.dart';
 import 'screens/campus_screen.dart';
 import 'screens/city_places_screen.dart';
@@ -27,13 +27,20 @@ class UniversityGuideApp extends StatefulWidget {
 
 class _UniversityGuideAppState extends State<UniversityGuideApp> {
   final AppState _app = AppState();
-  final TipRepository _tipRepository = InMemoryTipRepository();
-  final AuthService _authService = FakeAuthService();
+  final LocalTipRepository _localTipRepository = LocalTipRepository();
+  final PersistentAuthService _persistentAuthService = PersistentAuthService();
 
   @override
   void initState() {
     super.initState();
-    _app.load();
+    _initializeLocalData();
+  }
+
+  Future<void> _initializeLocalData() async {
+    await _localTipRepository.init();
+    await _persistentAuthService.init();
+    await _app.load();
+    if (mounted) setState(() {});
   }
 
   @override
@@ -49,8 +56,8 @@ class _UniversityGuideAppState extends State<UniversityGuideApp> {
           themeMode: _app.themeMode,
           home: MainNavigationShell(
             app: _app,
-            tipRepository: _tipRepository,
-            authService: _authService,
+            tipRepository: _localTipRepository,
+            authService: _persistentAuthService,
           ),
         );
       },
