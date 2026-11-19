@@ -87,29 +87,33 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
               children: [
-                TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Search in ${widget.category.label}...',
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    suffixIcon: _query.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 18),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => _query = '');
-                            },
-                          )
-                        : null,
+                Semantics(
+                  label: 'Search within ${widget.category.label}',
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search in ${widget.category.label}...',
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      suffixIcon: _query.isNotEmpty
+                          ? IconButton(
+                              tooltip: 'Clear search',
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _query = '');
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (val) => setState(() => _query = val),
                   ),
-                  onChanged: (val) => setState(() => _query = val),
                 ),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '${tips.length} tips found',
+                      tips.length == 1 ? '1 tip found' : '${tips.length} tips found',
                       style: theme.textTheme.labelMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
@@ -121,11 +125,13 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
                           value: TipSort.mostHelpful,
                           label: Text('Most helpful'),
                           icon: Icon(Icons.thumb_up_outlined, size: 14),
+                          tooltip: 'Sort by Wilson score interval',
                         ),
                         ButtonSegment(
                           value: TipSort.newest,
                           label: Text('Newest'),
                           icon: Icon(Icons.schedule, size: 14),
+                          tooltip: 'Sort by newest created first',
                         ),
                       ],
                       selected: {_sort},
@@ -136,11 +142,32 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
                 const SizedBox(height: 14),
                 if (tips.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 40),
+                    padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 16),
                     child: Center(
-                      child: Text(
-                        'No tips found matching "$_query"',
-                        style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.lightbulb_outline,
+                            size: 44,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _query.isNotEmpty
+                                ? 'No tips matching "$_query"'
+                                : 'No tips in ${widget.category.label} yet',
+                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Have you experienced this? Sign in and share the first tip in the Share tab to help other students!',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   )

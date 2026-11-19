@@ -51,15 +51,20 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
     }
   }
 
+  /// Toggles, changes, or removes the user's vote according to repo contract.
   Future<void> _castVote(VoteValue value) async {
     final user = widget.authService.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sign in with your TUL e-mail to vote.')),
+        const SnackBar(
+          content: Text('Sign in with your TUL e-mail to vote on student advice.'),
+          duration: Duration(seconds: 3),
+        ),
       );
       return;
     }
 
+    // If tapping the already-selected vote, remove it (null). Otherwise, set or change it.
     final newVote = _myVote == value ? null : value;
     final updated = await widget.repository.vote(
       tipId: _tip.id,
@@ -72,6 +77,16 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
         _tip = updated;
         _myVote = newVote;
       });
+
+      final feedbackText = newVote == null
+          ? 'Vote removed.'
+          : (newVote == VoteValue.helpful
+              ? 'Marked as helpful. Thank you!'
+              : 'Marked as not helpful.');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(feedbackText), duration: const Duration(seconds: 2)),
+      );
     }
   }
 
@@ -168,89 +183,87 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
             'Was this advice helpful?',
             style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
-            'Wilson score: ${(score * 100).toStringAsFixed(1)}% · ${_tip.helpful} helpful · ${_tip.notHelpful} not helpful',
+            'Wilson confidence score: ${(score * 100).toStringAsFixed(1)}% · ${_tip.helpful} helpful · ${_tip.notHelpful} not helpful',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           if (_isLoadingVote)
             const SizedBox(
-              height: 40,
+              height: 44,
               child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
             )
           else
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: _myVote == VoteValue.helpful
-                          ? theme.colorScheme.primaryContainer
-                          : null,
-                      side: BorderSide(
-                        color: _myVote == VoteValue.helpful
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.outlineVariant,
+                  child: Semantics(
+                    button: true,
+                    label: _myVote == VoteValue.helpful
+                        ? 'Remove your helpful vote. Currently ${_tip.helpful} helpful votes.'
+                        : 'Vote helpful. Currently ${_tip.helpful} helpful votes.',
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: _myVote == VoteValue.helpful
+                            ? theme.colorScheme.primaryContainer
+                            : null,
+                        side: BorderSide(
+                          color: _myVote == VoteValue.helpful
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.outlineVariant,
+                          width: _myVote == VoteValue.helpful ? 2 : 1,
+                        ),
                       ),
-                    ),
-                    onPressed: () => _castVote(VoteValue.helpful),
-                    icon: Icon(
-                      _myVote == VoteValue.helpful
-                          ? Icons.thumb_up
-                          : Icons.thumb_up_outlined,
-                      size: 16,
-                      color: _myVote == VoteValue.helpful
-                          ? theme.colorScheme.primary
-                          : null,
-                    ),
-                    label: Text(
-                      'Helpful (${_tip.helpful})',
-                      style: TextStyle(
-                        color: _myVote == VoteValue.helpful
-                            ? theme.colorScheme.primary
-                            : null,
-                        fontWeight: _myVote == VoteValue.helpful
-                            ? FontWeight.w700
-                            : null,
+                      onPressed: () => _castVote(VoteValue.helpful),
+                      icon: Icon(
+                        _myVote == VoteValue.helpful ? Icons.thumb_up : Icons.thumb_up_outlined,
+                        size: 16,
+                        color: _myVote == VoteValue.helpful ? theme.colorScheme.primary : null,
+                      ),
+                      label: Text(
+                        'Helpful (${_tip.helpful})',
+                        style: TextStyle(
+                          color: _myVote == VoteValue.helpful ? theme.colorScheme.primary : null,
+                          fontWeight: _myVote == VoteValue.helpful ? FontWeight.w800 : null,
+                        ),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: _myVote == VoteValue.notHelpful
-                          ? theme.colorScheme.errorContainer.withValues(alpha: 0.5)
-                          : null,
-                      side: BorderSide(
-                        color: _myVote == VoteValue.notHelpful
-                            ? theme.colorScheme.error
-                            : theme.colorScheme.outlineVariant,
+                  child: Semantics(
+                    button: true,
+                    label: _myVote == VoteValue.notHelpful
+                        ? 'Remove your not helpful vote. Currently ${_tip.notHelpful} not helpful votes.'
+                        : 'Vote not helpful. Currently ${_tip.notHelpful} not helpful votes.',
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: _myVote == VoteValue.notHelpful
+                            ? theme.colorScheme.errorContainer.withValues(alpha: 0.6)
+                            : null,
+                        side: BorderSide(
+                          color: _myVote == VoteValue.notHelpful
+                              ? theme.colorScheme.error
+                              : theme.colorScheme.outlineVariant,
+                          width: _myVote == VoteValue.notHelpful ? 2 : 1,
+                        ),
                       ),
-                    ),
-                    onPressed: () => _castVote(VoteValue.notHelpful),
-                    icon: Icon(
-                      _myVote == VoteValue.notHelpful
-                          ? Icons.thumb_down
-                          : Icons.thumb_down_outlined,
-                      size: 16,
-                      color: _myVote == VoteValue.notHelpful
-                          ? theme.colorScheme.error
-                          : null,
-                    ),
-                    label: Text(
-                      'Not helpful (${_tip.notHelpful})',
-                      style: TextStyle(
-                        color: _myVote == VoteValue.notHelpful
-                            ? theme.colorScheme.error
-                            : null,
-                        fontWeight: _myVote == VoteValue.notHelpful
-                            ? FontWeight.w700
-                            : null,
+                      onPressed: () => _castVote(VoteValue.notHelpful),
+                      icon: Icon(
+                        _myVote == VoteValue.notHelpful ? Icons.thumb_down : Icons.thumb_down_outlined,
+                        size: 16,
+                        color: _myVote == VoteValue.notHelpful ? theme.colorScheme.error : null,
+                      ),
+                      label: Text(
+                        'Not helpful (${_tip.notHelpful})',
+                        style: TextStyle(
+                          color: _myVote == VoteValue.notHelpful ? theme.colorScheme.error : null,
+                          fontWeight: _myVote == VoteValue.notHelpful ? FontWeight.w800 : null,
+                        ),
                       ),
                     ),
                   ),
