@@ -1,20 +1,17 @@
 import 'package:flutter/material.dart';
 
-import '../data/auth_service.dart';
-import '../data/tip_repository.dart';
 import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
+import '../viewmodels/guide_view_model.dart';
 
 class TipDetailScreen extends StatefulWidget {
-  final Tip tip;
-  final TipRepository repository;
-  final AuthService authService;
+  final String tipId;
+  final GuideViewModel viewModel;
 
   const TipDetailScreen({
     super.key,
-    required this.tip,
-    required this.repository,
-    required this.authService,
+    required this.tipId,
+    required this.viewModel,
   });
 
   @override
@@ -22,56 +19,20 @@ class TipDetailScreen extends StatefulWidget {
 }
 
 class _TipDetailScreenState extends State<TipDetailScreen> {
-  late Tip _tip;
-  VoteValue? _myVote;
-  bool _isLoadingVote = true;
+  GuideViewModel get _vm => widget.viewModel;
 
   @override
   void initState() {
     super.initState();
-    _tip = widget.tip;
-    _checkMyVote();
-  }
-
-  Future<void> _checkMyVote() async {
-    final user = widget.authService.currentUser;
-    if (user != null) {
-      final vote = await widget.repository.myVote(
-        tipId: _tip.id,
-        userId: user.uid,
-      );
-      if (mounted) {
-        setState(() {
-          _myVote = vote;
-          _isLoadingVote = false;
-        });
-      }
-    } else {
-      if (mounted) setState(() => _isLoadingVote = false);
-    }
+    _vm.loadMyVote(widget.tipId);
   }
 
   Future<void> _castVote(VoteValue value) async {
-    final user = widget.authService.currentUser;
-    if (user == null) {
+    final outcome = await _vm.vote(widget.tipId, value);
+    if (outcome == VoteOutcome.signInRequired && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Sign in with your TUL e-mail to vote.')),
       );
-      return;
-    }
-
-    final newVote = _myVote == value ? null : value;
-    final updated = await widget.repository.vote(
-      tipId: _tip.id,
-      userId: user.uid,
-      value: newVote,
-    );
-
-    if (mounted) {
-      setState(() {
-        _tip = updated;
-        _myVote = newVote;
-      });
     }
   }
 
@@ -88,13 +49,28 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _vm,
+      builder: (context, _) => _buildScreen(context),
+    );
+  }
+
+  Widget _buildScreen(BuildContext context) {
     final theme = Theme.of(context);
-    final score = wilsonScore(_tip.helpful, _tip.notHelpful);
+    final tip = _vm.tipById(widget.tipId);
+    if (tip == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: const Center(child: Text('This tip is no longer available.')),
+      );
+    }
+    final myVote = _vm.myVote(widget.tipId);
+    final score = wilsonScore(tip.helpful, tip.notHelpful);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _tip.category.label,
+          tip.category.label,
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
@@ -107,7 +83,7 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
                 radius: 20,
                 backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
                 child: Icon(
-                  _iconForCategory(_tip.category),
+                  _iconForCategory(tip.category),
                   color: theme.colorScheme.primary,
                   size: 20,
                 ),
@@ -124,7 +100,7 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        _tip.category.label.toUpperCase(),
+                        tip.category.label.toUpperCase(),
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -134,7 +110,7 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Shared by ${_tip.authorName} · ${_formatDate(_tip.createdAt)}',
+                      'Shared by ${tip.authorName} · ${_formatDate(tip.createdAt)}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -146,7 +122,7 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
           ),
           const SizedBox(height: 18),
           Text(
-            _tip.title,
+            tip.title,
             style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w800,
@@ -155,7 +131,7 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            _tip.body,
+            tip.body,
             style: theme.textTheme.bodyLarge?.copyWith(
               height: 1.6,
               fontSize: 15,
@@ -170,49 +146,43 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Wilson score: ${(score * 100).toStringAsFixed(1)}% · ${_tip.helpful} helpful · ${_tip.notHelpful} not helpful',
+            'Wilson score: ${(score * 100).toStringAsFixed(1)}% · ${tip.helpful} helpful · ${tip.notHelpful} not helpful',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 12),
-          if (_isLoadingVote)
-            const SizedBox(
-              height: 40,
-              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-            )
-          else
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      backgroundColor: _myVote == VoteValue.helpful
+                      backgroundColor: myVote == VoteValue.helpful
                           ? theme.colorScheme.primaryContainer
                           : null,
                       side: BorderSide(
-                        color: _myVote == VoteValue.helpful
+                        color: myVote == VoteValue.helpful
                             ? theme.colorScheme.primary
                             : theme.colorScheme.outlineVariant,
                       ),
                     ),
                     onPressed: () => _castVote(VoteValue.helpful),
                     icon: Icon(
-                      _myVote == VoteValue.helpful
+                      myVote == VoteValue.helpful
                           ? Icons.thumb_up
                           : Icons.thumb_up_outlined,
                       size: 16,
-                      color: _myVote == VoteValue.helpful
+                      color: myVote == VoteValue.helpful
                           ? theme.colorScheme.primary
                           : null,
                     ),
                     label: Text(
-                      'Helpful (${_tip.helpful})',
+                      'Helpful (${tip.helpful})',
                       style: TextStyle(
-                        color: _myVote == VoteValue.helpful
+                        color: myVote == VoteValue.helpful
                             ? theme.colorScheme.primary
                             : null,
-                        fontWeight: _myVote == VoteValue.helpful
+                        fontWeight: myVote == VoteValue.helpful
                             ? FontWeight.w700
                             : null,
                       ),
@@ -223,32 +193,32 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
                 Expanded(
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      backgroundColor: _myVote == VoteValue.notHelpful
+                      backgroundColor: myVote == VoteValue.notHelpful
                           ? theme.colorScheme.errorContainer.withValues(alpha: 0.5)
                           : null,
                       side: BorderSide(
-                        color: _myVote == VoteValue.notHelpful
+                        color: myVote == VoteValue.notHelpful
                             ? theme.colorScheme.error
                             : theme.colorScheme.outlineVariant,
                       ),
                     ),
                     onPressed: () => _castVote(VoteValue.notHelpful),
                     icon: Icon(
-                      _myVote == VoteValue.notHelpful
+                      myVote == VoteValue.notHelpful
                           ? Icons.thumb_down
                           : Icons.thumb_down_outlined,
                       size: 16,
-                      color: _myVote == VoteValue.notHelpful
+                      color: myVote == VoteValue.notHelpful
                           ? theme.colorScheme.error
                           : null,
                     ),
                     label: Text(
-                      'Not helpful (${_tip.notHelpful})',
+                      'Not helpful (${tip.notHelpful})',
                       style: TextStyle(
-                        color: _myVote == VoteValue.notHelpful
+                        color: myVote == VoteValue.notHelpful
                             ? theme.colorScheme.error
                             : null,
-                        fontWeight: _myVote == VoteValue.notHelpful
+                        fontWeight: myVote == VoteValue.notHelpful
                             ? FontWeight.w700
                             : null,
                       ),

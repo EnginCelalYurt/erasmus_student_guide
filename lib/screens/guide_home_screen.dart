@@ -1,39 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../data/auth_service.dart';
-import '../data/tip_repository.dart';
 import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
 import '../utils/open_link.dart';
+import '../viewmodels/guide_view_model.dart';
 import 'category_tips_screen.dart';
 import 'tip_detail_screen.dart';
 
 class GuideHomeScreen extends StatefulWidget {
-  final TipRepository repository;
-  final AuthService authService;
+  final GuideViewModel viewModel;
 
-  const GuideHomeScreen({
-    super.key,
-    required this.repository,
-    required this.authService,
-  });
+  const GuideHomeScreen({super.key, required this.viewModel});
 
   @override
   State<GuideHomeScreen> createState() => _GuideHomeScreenState();
 }
 
 class _GuideHomeScreenState extends State<GuideHomeScreen> {
+  // Temporary interface state; tips and votes live in the view model.
   TipSort _sort = TipSort.mostHelpful;
   String _searchQuery = '';
   final _searchController = TextEditingController();
-  List<Tip> _allTips = [];
-  bool _isLoading = true;
+
+  GuideViewModel get _vm => widget.viewModel;
 
   @override
   void initState() {
     super.initState();
-    _loadTips();
+    _vm.load();
   }
 
   @override
@@ -42,26 +37,11 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
     super.dispose();
   }
 
-  Future<void> _loadTips() async {
-    setState(() => _isLoading = true);
-    final tips = await widget.repository.fetchTips();
-    if (mounted) {
-      setState(() {
-        _allTips = tips;
-        _isLoading = false;
-      });
-    }
-  }
-
-  List<Tip> get _processedTips {
-    final searched = searchTips(_allTips, _searchQuery);
-    return rankTips(searched, _sort);
-  }
-
   Future<void> _call112() async {
     final ok = await openLink('tel:112');
     if (!ok && mounted) {
       await Clipboard.setData(const ClipboardData(text: '112'));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('112 Emergency number copied')),
       );
@@ -83,33 +63,32 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CategoryTipsScreen(
-          category: category,
-          repository: widget.repository,
-          authService: widget.authService,
-        ),
+        builder: (_) => CategoryTipsScreen(category: category, viewModel: _vm),
       ),
-    ).then((_) => _loadTips());
+    );
   }
 
   void _openTipDetail(Tip tip) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => TipDetailScreen(
-          tip: tip,
-          repository: widget.repository,
-          authService: widget.authService,
-        ),
+        builder: (_) => TipDetailScreen(tipId: tip.id, viewModel: _vm),
       ),
-    ).then((_) => _loadTips());
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _vm,
+      builder: (context, _) => _buildScreen(context),
+    );
+  }
+
+  Widget _buildScreen(BuildContext context) {
     final theme = Theme.of(context);
-    final user = widget.authService.currentUser;
-    final tips = _processedTips;
+    final user = _vm.currentUser;
+    final tips = _vm.visibleTips(query: _searchQuery, sort: _sort);
 
     return Scaffold(
       appBar: AppBar(
@@ -133,10 +112,10 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
           ],
         ),
       ),
-      body: _isLoading
+      body: _vm.isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _loadTips,
+              onRefresh: _vm.load,
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 36),
                 children: [
@@ -208,12 +187,24 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                   const SizedBox(height: 12),
 
                   // 5. Tips List (Ranked & Searched)
-                  if (tips.isEmpty)
+                  if (_vm.error != null)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 40),
                       child: Center(
                         child: Text(
-                          'No tips found for "$_searchQuery"',
+                          _vm.error!,
+                          style: TextStyle(color: theme.colorScheme.error),
+                        ),
+                      ),
+                    )
+                  else if (tips.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      child: Center(
+                        child: Text(
+                          _searchQuery.trim().isEmpty
+                              ? 'No tips yet.'
+                              : 'No tips found for "$_searchQuery"',
                           style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                         ),
                       ),
@@ -331,7 +322,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
           itemCount: categories.length,
           itemBuilder: (context, index) {
             final cat = categories[index];
-            final count = _allTips.where((t) => t.category == cat).length;
+            final count = _vm.visibleCount(cat);
 
             return Card(
               child: InkWell(
@@ -366,7 +357,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
-                              '$count tips',
+                              count == 1 ? '1 tip' : '$count tips',
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                                 fontSize: 11,
