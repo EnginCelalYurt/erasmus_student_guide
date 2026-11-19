@@ -377,54 +377,64 @@ class SampleData {
         ),
       ];
 
+  /// Week 4 Scope Check requirement:
+  /// "Keep Checklist only if every item has a source."
   static List<ChecklistItem> checklist() => [
         ChecklistItem(
           id: 'k1',
           phase: 'Before Arrival',
           title: 'Acceptance Letter & Visa / Border Entry',
-          detail: 'Keep digital and printed copies of your acceptance letter, valid passport, and travel health insurance.',
+          detail: 'Keep digital and printed copies of your official acceptance letter, passport, and health insurance.',
+          source: 'Source: TUL International Educational Center (cwm.p.lodz.pl)',
         ),
         ChecklistItem(
           id: 'k2',
           phase: 'Before Arrival',
-          title: 'Dorm or Apartment Confirmation',
-          detail: 'Verify your dorm allocation, check-in time window, address, and arrival contact number.',
+          title: 'Dorm Allocation & Arrival Confirmation',
+          detail: 'Verify your allocated room number, check-in time window, and arrival date with the dorm office.',
+          source: 'Source: PŁ Osiedle Akademickie (p.lodz.pl/en/students/accommodation)',
         ),
         ChecklistItem(
           id: 'k3',
           phase: 'First Days',
-          title: 'Register at International Office / Dean Office',
-          detail: 'Bring required original documents, passport photo, and collect your official student registration pack.',
+          title: 'Register at International Office (CWM)',
+          detail: 'Bring required original documents, passport photo, and collect your official registration pack in Building B9.',
+          source: 'Source: PŁ International Faculty of Engineering / CWM Building B9',
         ),
         ChecklistItem(
           id: 'k4',
           phase: 'First Days',
-          title: 'Pick up Electronic Student ID (Legitymacja)',
-          detail: 'Enables 50% public transit discount, university library loans, and campus facility entry.',
+          title: 'Pick up Electronic Student ID (Legitymacja ELS)',
+          detail: 'Enables 50% public transit discount, university library access, and campus facility entry.',
+          source: 'Source: Polish Law on Higher Education & TUL Student Regulations',
         ),
         ChecklistItem(
           id: 'k5',
           phase: 'First Days',
-          title: 'Local SIM Card or eSIM Registration',
-          detail: 'Register a local Polish prepaid SIM (Play, Orange, Plus, T-Mobile) in any kiosk with your passport.',
+          title: 'Polish Prepaid SIM Card Registration',
+          detail: 'Register a local prepaid SIM (Play, Orange, Plus) at any kiosk or post office with your passport.',
+          source: 'Source: Polish Telecommunications Act (Mandatory Registration)',
         ),
         ChecklistItem(
           id: 'k6',
           phase: 'First Days',
           title: 'Configure Eduroam Wi-Fi & University Email',
-          detail: 'Log in to campus Eduroam using your official student credentials and test webmail access.',
+          detail: 'Log in to campus Eduroam using your student credentials (@edu.p.lodz.pl) via cat.eduroam.org.',
+          source: 'Source: TUL Information Technology Centre (uci.p.lodz.pl/eduroam)',
         ),
         ChecklistItem(
           id: 'k7',
           phase: 'During Semester',
           title: 'Public Transit Pass (Semester Migawka)',
-          detail: 'Encode your student pass onto your Legitymacja or MPK card at an MPK customer service point.',
+          detail: 'Encode your 30-day or semester student discount pass onto your Legitymacja at an MPK service point.',
+          source: 'Source: MPK-Łódź Public Transport Authority (mpk.lodz.pl)',
         ),
         ChecklistItem(
           id: 'k8',
           phase: 'During Semester',
-          title: 'Open Local Bank Account or Set up BLIK',
+          title: 'Open Polish Bank Account or Set up BLIK',
           detail: 'Helpful for receiving scholarship funds and easy fee/dorm payments without currency exchange loss.',
+          source: 'Source: Polish Financial Supervision Authority (KNF) / mBank PŁ Campus Desk',
         ),
       ];
 }

@@ -4,28 +4,25 @@ import 'data/auth_service.dart';
 import 'data/local_tip_repository.dart';
 import 'data/persistent_auth_service.dart';
 import 'data/tip_repository.dart';
-import 'screens/campus_screen.dart';
-import 'screens/city_places_screen.dart';
 import 'screens/guide_home_screen.dart';
 import 'screens/orientation_screen.dart';
-import 'screens/saved_screen.dart';
 import 'screens/share_screen.dart';
 import 'state/app_state.dart';
 import 'theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const UniversityGuideApp());
+  runApp(const ErasmusStudentGuideApp());
 }
 
-class UniversityGuideApp extends StatefulWidget {
-  const UniversityGuideApp({super.key});
+class ErasmusStudentGuideApp extends StatefulWidget {
+  const ErasmusStudentGuideApp({super.key});
 
   @override
-  State<UniversityGuideApp> createState() => _UniversityGuideAppState();
+  State<ErasmusStudentGuideApp> createState() => _ErasmusStudentGuideAppState();
 }
 
-class _UniversityGuideAppState extends State<UniversityGuideApp> {
+class _ErasmusStudentGuideAppState extends State<ErasmusStudentGuideApp> {
   final AppState _app = AppState();
   final LocalTipRepository _localTipRepository = LocalTipRepository();
   final PersistentAuthService _persistentAuthService = PersistentAuthService();
@@ -49,7 +46,7 @@ class _UniversityGuideAppState extends State<UniversityGuideApp> {
       listenable: _app,
       builder: (context, _) {
         return MaterialApp(
-          title: 'Campus & University Guide',
+          title: 'Erasmus Student Guide',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
@@ -90,8 +87,9 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
       listenable: widget.app,
       builder: (context, _) {
         final app = widget.app;
-        final savedCount = app.totalSavedCount;
 
+        // Week 4 Scope Check: Clean MVP navigation (Guide, Share, Arrival Checklist)
+        // Campus, Places and Saved tabs cut according to team plan.
         return Scaffold(
           body: IndexedStack(
             index: _index,
@@ -105,10 +103,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                 authService: widget.authService,
                 onTipPublished: () => setState(() => _index = 0),
               ),
-              CampusScreen(app: app),
-              CityPlacesScreen(app: app),
               OrientationScreen(app: app),
-              SavedScreen(app: app),
             ],
           ),
           bottomNavigationBar: NavigationBar(
@@ -119,21 +114,13 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                 icon: Icon(Icons.lightbulb_outline),
                 selectedIcon: Icon(Icons.lightbulb),
                 label: 'Guide',
+                tooltip: 'Browse student guides and tips',
               ),
               const NavigationDestination(
                 icon: Icon(Icons.add_circle_outline),
                 selectedIcon: Icon(Icons.add_circle),
                 label: 'Share',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.account_balance_outlined),
-                selectedIcon: Icon(Icons.account_balance),
-                label: 'Campus',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.place_outlined),
-                selectedIcon: Icon(Icons.place),
-                label: 'Places',
+                tooltip: 'Share your advice (TUL student sign-in required)',
               ),
               NavigationDestination(
                 icon: Badge(
@@ -147,19 +134,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                   child: const Icon(Icons.checklist_rtl),
                 ),
                 label: 'Checklist',
-              ),
-              NavigationDestination(
-                icon: Badge(
-                  isLabelVisible: savedCount > 0,
-                  label: Text('$savedCount'),
-                  child: const Icon(Icons.bookmark_border),
-                ),
-                selectedIcon: Badge(
-                  isLabelVisible: savedCount > 0,
-                  label: Text('$savedCount'),
-                  child: const Icon(Icons.bookmark),
-                ),
-                label: 'Saved',
+                tooltip: 'Sourced arrival steps and student notes',
               ),
             ],
           ),

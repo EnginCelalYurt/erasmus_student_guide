@@ -45,6 +45,7 @@ class ChecklistItem {
   final String title;
   final String detail;
   final String phase;
+  final String? source;
   bool done;
 
   ChecklistItem({
@@ -52,6 +53,7 @@ class ChecklistItem {
     required this.title,
     required this.detail,
     required this.phase,
+    this.source,
     this.done = false,
   });
 }

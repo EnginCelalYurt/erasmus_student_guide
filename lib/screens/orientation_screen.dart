@@ -57,11 +57,11 @@ class _OrientationScreenState extends State<OrientationScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Orientation & Plan',
+              'Arrival Checklist & Notes',
               style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: -0.4),
             ),
             Text(
-              'Checklist for enrollment, dorms & arrival notes',
+              'Verified onboarding steps for TUL Erasmus students',
               style: TextStyle(fontSize: 12),
             ),
           ],
@@ -81,7 +81,7 @@ class _OrientationScreenState extends State<OrientationScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Orientation Progress',
+                        'Onboarding Readiness',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
@@ -107,8 +107,8 @@ class _OrientationScreenState extends State<OrientationScreen> {
                   const SizedBox(height: 8),
                   Text(
                     progress >= 1.0
-                        ? '🎉 All onboarding steps completed! You are fully set up for university life.'
-                        : 'Complete these essential steps to settle smoothly into campus and city life.',
+                        ? '🎉 All onboarding steps completed! You are fully set up for semester life at TUL.'
+                        : 'Every step is sourced from official university & local regulations.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -146,12 +146,28 @@ class _OrientationScreenState extends State<OrientationScreen> {
                       color: item.done ? theme.colorScheme.onSurfaceVariant : null,
                     ),
                   ),
-                  subtitle: Text(
-                    item.detail,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      decoration: item.done ? TextDecoration.lineThrough : null,
-                    ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.detail,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          decoration: item.done ? TextDecoration.lineThrough : null,
+                        ),
+                      ),
+                      if (item.source != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          item.source!,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontStyle: FontStyle.italic,
+                            color: theme.colorScheme.primary.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               );
@@ -165,7 +181,7 @@ class _OrientationScreenState extends State<OrientationScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Dorm room number, Wi-Fi password, coordinator contact, or personal reminders.',
+            'Keep your room number, coordinator contact, or personal reminders here (saved locally).',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -174,9 +190,9 @@ class _OrientationScreenState extends State<OrientationScreen> {
           TextField(
             controller: _notesController,
             focusNode: _notesFocus,
-            maxLines: 6,
+            maxLines: 5,
             decoration: const InputDecoration(
-              hintText: 'e.g., Dean office is building B9 room 204. Need to pick up student card on Tuesday morning...',
+              hintText: 'e.g., Coordinator sits in B9 room 204. Need to pick up student ID on Tuesday morning...',
             ),
             onChanged: (val) => app.setNotes(val),
           ),

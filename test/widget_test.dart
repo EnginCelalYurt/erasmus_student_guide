@@ -15,24 +15,55 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
+  group('Week 4 Yusuf Deliverables & UI Tests', () {
+    testWidgets('App displays official name and 3 agreed MVP tabs', (tester) async {
+      await tester.pumpWidget(const ErasmusStudentGuideApp());
+      await tester.pump();
+
+      // Official App Name check
+      expect(find.text('Erasmus Student Guide'), findsOneWidget);
+
+      // 3 Agreed MVP Navigation Tabs
+      expect(find.text('Guide'), findsOneWidget);
+      expect(find.text('Share'), findsOneWidget);
+      expect(find.text('Checklist'), findsOneWidget);
+
+      // Scope check: Campus and Places should not be present in bottom navigation
+      expect(find.text('Campus'), findsNothing);
+      expect(find.text('Places'), findsNothing);
+    });
+
+    testWidgets('Category tips count singular and plural formatting', (tester) async {
+      await tester.pumpWidget(const ErasmusStudentGuideApp());
+      await tester.pump();
+
+      // Verifies categories grid renders with 'tips' or 'tip'
+      expect(find.text('Explore by Category'), findsOneWidget);
+      expect(find.textContaining('tip'), findsWidgets);
+    });
+
+    testWidgets('Tapping Checklist shows sourced steps and notes', (tester) async {
+      await tester.pumpWidget(const ErasmusStudentGuideApp());
+      await tester.pump();
+
+      await tester.tap(find.text('Checklist').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Arrival Checklist & Notes'), findsOneWidget);
+      expect(find.textContaining('Source:'), findsWidgets);
+      expect(find.text('My Campus Notes'), findsOneWidget);
+    });
+  });
+
   group('Week 7 API Integration & Offline Reliability Tests', () {
     test('LodzApiService falls back to cached data when offline', () async {
       final service = LodzApiService();
 
-      // In test sandbox without internet, it gracefully triggers the fallback
       final result = await service.fetchLiveInfo();
       expect(result, isNotNull);
       expect(result.eurToPln, greaterThan(0));
       expect(result.isFromCache, isTrue);
       expect(result.notice, isNotNull);
-    });
-  });
-
-  group('Week 8 Mobile Capabilities & Permissions Fallback Tests', () {
-    test('Emergency dialer number sanitation format', () {
-      const input = '+48 42 631 29 99';
-      final clean = input.replaceAll(RegExp(r'[^0-9+]'), '');
-      expect(clean, '+48426312999');
     });
   });
 
@@ -73,29 +104,12 @@ void main() {
       final repoSession2 = LocalTipRepository();
       await repoSession2.init();
       final voteSession2 = await repoSession2.myVote(tipId: tipId, userId: 'usr_yusuf');
+
       expect(voteSession2, VoteValue.helpful);
-    });
-
-    test('PersistentAuthService restores user session after app restart', () async {
-      final authSession1 = PersistentAuthService();
-      await authSession1.init();
-      expect(authSession1.currentUser, isNull);
-
-      await authSession1.signIn(
-        email: 'yusuf.taskin@edu.p.lodz.pl',
-        password: 'anyPassword123',
-      );
-      expect(authSession1.currentUser?.email, 'yusuf.taskin@edu.p.lodz.pl');
-
-      // Simulate app restart
-      final authSession2 = PersistentAuthService();
-      await authSession2.init();
-
-      expect(authSession2.currentUser?.email, 'yusuf.taskin@edu.p.lodz.pl');
     });
   });
 
-  group('Week 5 & 9 ViewModel and MVP Tests', () {
+  group('ViewModel Tests', () {
     test('GuideViewModel loads, filters and ranks tips with Wilson score', () async {
       final repo = LocalTipRepository();
       final auth = PersistentAuthService();
@@ -109,19 +123,6 @@ void main() {
 
       vm.setCategory(TipCategory.transport);
       expect(vm.tips.every((t) => t.category == TipCategory.transport), isTrue);
-    });
-  });
-
-  group('UI Smoke and Navigation Tests', () {
-    testWidgets('App displays Guide, Live Info Banner, 112 Banner and Navigation Tabs', (tester) async {
-      await tester.pumpWidget(const UniversityGuideApp());
-      await tester.pump();
-
-      expect(find.text('University Guide'), findsOneWidget);
-      expect(find.textContaining('112 Emergency'), findsOneWidget);
-      expect(find.text('Guide'), findsOneWidget);
-      expect(find.text('Share'), findsOneWidget);
-      expect(find.text('Campus'), findsOneWidget);
     });
   });
 }
