@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-
+import 'package:firebase_core/firebase_core.dart';
 import 'data/auth_service.dart';
 import 'data/fake_auth_service.dart';
 import 'data/in_memory_tip_repository.dart';
 import 'data/tip_repository.dart';
+import 'firebase_options.dart';
 import 'screens/campus_screen.dart';
 import 'screens/city_places_screen.dart';
 import 'screens/guide_home_screen.dart';
@@ -12,8 +13,11 @@ import 'screens/saved_screen.dart';
 import 'state/app_state.dart';
 import 'theme.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const UniversityGuideApp());
 }
 
