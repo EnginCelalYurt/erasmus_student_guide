@@ -1,3 +1,4 @@
+import '../logic/vote_counts.dart';
 import '../models/tip.dart';
 import 'sample_tips.dart';
 import 'tip_repository.dart';
@@ -46,14 +47,12 @@ class InMemoryTipRepository implements TipRepository {
     if (index < 0) throw ArgumentError('Unknown tip: $tipId');
 
     final userVotes = _votes.putIfAbsent(tipId, () => {});
-    final previous = userVotes[userId];
-    var helpful = _tips[index].helpful;
-    var notHelpful = _tips[index].notHelpful;
-
-    if (previous == VoteValue.helpful) helpful--;
-    if (previous == VoteValue.notHelpful) notHelpful--;
-    if (value == VoteValue.helpful) helpful++;
-    if (value == VoteValue.notHelpful) notHelpful++;
+    final counts = applyVote(
+      helpful: _tips[index].helpful,
+      notHelpful: _tips[index].notHelpful,
+      previous: userVotes[userId],
+      next: value,
+    );
 
     if (value == null) {
       userVotes.remove(userId);
@@ -61,7 +60,10 @@ class InMemoryTipRepository implements TipRepository {
       userVotes[userId] = value;
     }
 
-    final updated = _tips[index].copyWith(helpful: helpful, notHelpful: notHelpful);
+    final updated = _tips[index].copyWith(
+      helpful: counts.helpful,
+      notHelpful: counts.notHelpful,
+    );
     _tips[index] = updated;
     return updated;
   }
