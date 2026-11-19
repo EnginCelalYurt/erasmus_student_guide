@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../data/auth_service.dart';
 import '../data/tip_repository.dart';
 import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
-import '../utils/open_link.dart';
+import '../services/lodz_api_service.dart';
+import '../services/mobile_capabilities_service.dart';
 import 'category_tips_screen.dart';
 import 'tip_detail_screen.dart';
 
@@ -24,16 +24,23 @@ class GuideHomeScreen extends StatefulWidget {
 }
 
 class _GuideHomeScreenState extends State<GuideHomeScreen> {
+  final LodzApiService _apiService = LodzApiService();
   TipSort _sort = TipSort.mostHelpful;
   String _searchQuery = '';
   final _searchController = TextEditingController();
+
   List<Tip> _allTips = [];
-  bool _isLoading = true;
+  bool _isLoadingTips = true;
+
+  LodzLiveInfo? _liveInfo;
+  bool _isLoadingLiveInfo = true;
+  String? _apiErrorMessage;
 
   @override
   void initState() {
     super.initState();
     _loadTips();
+    _loadLiveApiData();
   }
 
   @override
@@ -43,29 +50,43 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
   }
 
   Future<void> _loadTips() async {
-    setState(() => _isLoading = true);
+    setState(() => _isLoadingTips = true);
     final tips = await widget.repository.fetchTips();
     if (mounted) {
       setState(() {
         _allTips = tips;
-        _isLoading = false;
+        _isLoadingTips = false;
       });
+    }
+  }
+
+  Future<void> _loadLiveApiData({bool forceRefresh = false}) async {
+    setState(() {
+      _isLoadingLiveInfo = true;
+      _apiErrorMessage = null;
+    });
+
+    try {
+      final info = await _apiService.fetchLiveInfo(forceRefresh: forceRefresh);
+      if (mounted) {
+        setState(() {
+          _liveInfo = info;
+          _isLoadingLiveInfo = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _apiErrorMessage = 'Could not load live rates.';
+          _isLoadingLiveInfo = false;
+        });
+      }
     }
   }
 
   List<Tip> get _processedTips {
     final searched = searchTips(_allTips, _searchQuery);
     return rankTips(searched, _sort);
-  }
-
-  Future<void> _call112() async {
-    final ok = await openLink('tel:112');
-    if (!ok && mounted) {
-      await Clipboard.setData(const ClipboardData(text: '112'));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('112 Emergency number copied')),
-      );
-    }
   }
 
   IconData _iconForCategory(TipCategory category) {
@@ -133,18 +154,25 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
           ],
         ),
       ),
-      body: _isLoading
+      body: _isLoadingTips
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _loadTips,
+              onRefresh: () async {
+                await _loadTips();
+                await _loadLiveApiData(forceRefresh: true);
+              },
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 36),
                 children: [
-                  // 1. 112 Emergency Banner
+                  // Week 7: Live Public API Widget (NBP Exchange Rate + Open-Meteo Weather)
+                  _buildLiveInfoCard(theme),
+                  const SizedBox(height: 12),
+
+                  // Week 8: 112 Emergency Banner with Mobile Capability & Clipboard Fallback
                   _build112Banner(theme),
                   const SizedBox(height: 14),
 
-                  // 2. Search Field (calling searchTips)
+                  // Search Field
                   TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
@@ -164,7 +192,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 3. Categories Grid
+                  // Categories Grid
                   Text(
                     'Explore by Category',
                     style: theme.textTheme.titleMedium?.copyWith(
@@ -175,7 +203,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                   _buildCategoriesGrid(theme),
                   const SizedBox(height: 24),
 
-                  // 4. Most Helpful / Newest Rank Selector (Wilson score)
+                  // Most Helpful / Newest Rank Selector (Wilson score)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -207,7 +235,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // 5. Tips List (Ranked & Searched)
+                  // Tips List (Ranked & Searched)
                   if (tips.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 40),
@@ -226,6 +254,131 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
     );
   }
 
+  /// Week 7: Live NBP Currency & Weather API Widget with Offline State
+  Widget _buildLiveInfoCard(ThemeData theme) {
+    if (_isLoadingLiveInfo) {
+      return Card(
+        color: theme.colorScheme.surfaceContainerLowest,
+        child: const Padding(
+          padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          child: Row(
+            children: [
+              SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+              SizedBox(width: 12),
+              Text('Checking live Łódź exchange rates & weather...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final info = _liveInfo;
+    if (info == null) {
+      return Card(
+        child: ListTile(
+          title: const Text('Live data unavailable'),
+          subtitle: const Text('Tap to retry network request'),
+          trailing: IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => _loadLiveApiData(forceRefresh: true),
+          ),
+        ),
+      );
+    }
+
+    return Card(
+      color: info.isFromCache
+          ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6)
+          : theme.colorScheme.primaryContainer.withValues(alpha: 0.25),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  info.isFromCache ? Icons.cloud_off : Icons.wifi,
+                  size: 16,
+                  color: info.isFromCache
+                      ? theme.colorScheme.onSurfaceVariant
+                      : theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  info.isFromCache ? 'CACHED OFFLINE DATA' : 'LIVE ŁÓDŹ CAMPUS INFO',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                    color: info.isFromCache
+                        ? theme.colorScheme.onSurfaceVariant
+                        : theme.colorScheme.primary,
+                  ),
+                ),
+                const Spacer(),
+                InkWell(
+                  onTap: () => _loadLiveApiData(forceRefresh: true),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.refresh, size: 14, color: theme.colorScheme.primary),
+                      const SizedBox(width: 2),
+                      Text(
+                        'Refresh',
+                        style: TextStyle(fontSize: 11, color: theme.colorScheme.primary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.euro, size: 18),
+                      const SizedBox(width: 4),
+                      Text(
+                        '1 EUR = ${info.eurToPln.toStringAsFixed(2)} PLN',
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.thermostat, size: 18),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Łódź: ${info.temperatureC.toStringAsFixed(1)}°C',
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (info.notice != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                info.notice!,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Week 8: Emergency 112 Banner with Mobile Capabilities and Clipboard Fallback
   Widget _build112Banner(ThemeData theme) {
     return Material(
       color: theme.colorScheme.errorContainer.withValues(alpha: 0.75),
@@ -235,15 +388,11 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: _call112,
-        onLongPress: () async {
-          await Clipboard.setData(const ClipboardData(text: '112'));
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('112 Emergency number copied')),
-            );
-          }
-        },
+        onTap: () => MobileCapabilitiesService.dialOrCopyEmergencyNumber(
+          context: context,
+          phoneNumber: '112',
+          serviceLabel: 'General Emergency',
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
@@ -294,7 +443,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Police, ambulance & fire · Multilingual · Tap to call',
+                      'Police, ambulance & fire · Direct dial with clipboard fallback',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onErrorContainer.withValues(alpha: 0.8),
                       ),
