@@ -1,139 +1,150 @@
 import 'package:flutter/material.dart';
-import 'data/sample_data.dart';
-import 'models/course_review.dart';
-import 'screens/add_review_screen.dart';
-import 'screens/home_screen.dart';
+
+import 'repositories/tip_repository.dart';
+import 'screens/campus_screen.dart';
+import 'screens/city_places_screen.dart';
+import 'screens/guide_home_screen.dart';
+import 'screens/orientation_screen.dart';
 import 'screens/saved_screen.dart';
-import 'screens/survival_guide_screen.dart';
+import 'services/fake_auth_service.dart';
+import 'state/app_state.dart';
+import 'theme.dart';
 
 void main() {
-  runApp(const ErasmusGuideApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const UniversityGuideApp());
 }
 
-class ErasmusGuideApp extends StatelessWidget {
-  const ErasmusGuideApp({super.key});
+class UniversityGuideApp extends StatefulWidget {
+  const UniversityGuideApp({super.key});
+
+  @override
+  State<UniversityGuideApp> createState() => _UniversityGuideAppState();
+}
+
+class _UniversityGuideAppState extends State<UniversityGuideApp> {
+  final AppState _app = AppState();
+  final TipRepository _tipRepository = InMemoryTipRepository();
+  final AuthService _authService = FakeAuthService();
+
+  @override
+  void initState() {
+    super.initState();
+    _app.load();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Erasmus Student Guide - TUL',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF003399), // Erasmus European Blue
-          primary: const Color(0xFF003399),
-          secondary: const Color(0xFFA91D22), // Politechnika Łódzka Crimson
-        ),
-        appBarTheme: const AppBarTheme(
-          centerTitle: false,
-          elevation: 0,
-        ),
-        cardTheme: CardThemeData(
-          elevation: 1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+    return ListenableBuilder(
+      listenable: _app,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'Campus & University Guide',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
+          themeMode: _app.themeMode,
+          home: MainNavigationShell(
+            app: _app,
+            tipRepository: _tipRepository,
+            authService: _authService,
           ),
-        ),
-      ),
-      home: const MainNavigationShell(),
+        );
+      },
     );
   }
 }
 
 class MainNavigationShell extends StatefulWidget {
-  const MainNavigationShell({super.key});
+  final AppState app;
+  final TipRepository tipRepository;
+  final AuthService authService;
+
+  const MainNavigationShell({
+    super.key,
+    required this.app,
+    required this.tipRepository,
+    required this.authService,
+  });
 
   @override
   State<MainNavigationShell> createState() => _MainNavigationShellState();
 }
 
 class _MainNavigationShellState extends State<MainNavigationShell> {
-  int _currentIndex = 0;
-  final List<CourseItem> _courses = List.from(SampleData.courses);
-
-  void _toggleBookmark(CourseItem course) {
-    setState(() {
-      course.isSaved = !course.isSaved;
-    });
-  }
-
-  void _addReviewToCourse(CourseItem course, Review review) {
-    setState(() {
-      course.reviews.insert(0, review);
-      final total = course.reviews.fold<double>(
-          0.0, (previousValue, element) => previousValue + element.rating);
-      course.averageRating = total / course.reviews.length;
-    });
-  }
+  int _index = 0;
 
   @override
   Widget build(BuildContext context) {
-    final savedCourses = _courses.where((c) => c.isSaved).toList();
+    return ListenableBuilder(
+      listenable: widget.app,
+      builder: (context, _) {
+        final app = widget.app;
+        final savedCount = app.totalSavedCount;
 
-    final List<Widget> pages = [
-      HomeScreen(
-        courses: _courses,
-        onBookmarkToggle: _toggleBookmark,
-        onAddReviewToCourse: _addReviewToCourse,
-      ),
-      SurvivalGuideScreen(
-        tips: SampleData.survivalTips,
-      ),
-      AddReviewScreen(
-        courses: _courses,
-        onReviewSubmitted: _addReviewToCourse,
-      ),
-      SavedScreen(
-        savedCourses: savedCourses,
-        onBookmarkToggle: _toggleBookmark,
-        onAddReviewToCourse: _addReviewToCourse,
-      ),
-    ];
-
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: pages,
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.school_outlined),
-            selectedIcon: Icon(Icons.school),
-            label: 'Courses',
+        return Scaffold(
+          body: IndexedStack(
+            index: _index,
+            children: [
+              GuideHomeScreen(
+                repository: widget.tipRepository,
+                authService: widget.authService,
+              ),
+              CampusScreen(app: app),
+              CityPlacesScreen(app: app),
+              OrientationScreen(app: app),
+              SavedScreen(app: app),
+            ],
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.map_outlined),
-            selectedIcon: Icon(Icons.map),
-            label: 'Lodz Guide',
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _index,
+            onDestinationSelected: (value) => setState(() => _index = value),
+            destinations: [
+              const NavigationDestination(
+                icon: Icon(Icons.lightbulb_outline),
+                selectedIcon: Icon(Icons.lightbulb),
+                label: 'Guide',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.account_balance_outlined),
+                selectedIcon: Icon(Icons.account_balance),
+                label: 'Campus',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.place_outlined),
+                selectedIcon: Icon(Icons.place),
+                label: 'Places',
+              ),
+              NavigationDestination(
+                icon: Badge(
+                  isLabelVisible: app.checklistDone > 0,
+                  label: Text('${app.checklistDone}'),
+                  child: const Icon(Icons.checklist_rtl_outlined),
+                ),
+                selectedIcon: Badge(
+                  isLabelVisible: app.checklistDone > 0,
+                  label: Text('${app.checklistDone}'),
+                  child: const Icon(Icons.checklist_rtl),
+                ),
+                label: 'Checklist',
+              ),
+              NavigationDestination(
+                icon: Badge(
+                  isLabelVisible: savedCount > 0,
+                  label: Text('$savedCount'),
+                  child: const Icon(Icons.bookmark_border),
+                ),
+                selectedIcon: Badge(
+                  isLabelVisible: savedCount > 0,
+                  label: Text('$savedCount'),
+                  child: const Icon(Icons.bookmark),
+                ),
+                label: 'Saved',
+              ),
+            ],
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.add_circle_outline),
-            selectedIcon: Icon(Icons.add_circle),
-            label: 'Share Tip',
-          ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: savedCourses.isNotEmpty,
-              label: Text('${savedCourses.length}'),
-              child: const Icon(Icons.bookmark_border),
-            ),
-            selectedIcon: Badge(
-              isLabelVisible: savedCourses.isNotEmpty,
-              label: Text('${savedCourses.length}'),
-              child: const Icon(Icons.bookmark),
-            ),
-            label: 'Saved',
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

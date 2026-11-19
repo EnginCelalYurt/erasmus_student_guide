@@ -1,0 +1,19 @@
+{
+  "dart.flutterSdkPath": "C:\\src\\flutter",
+  "dart.sdkPath": "C:\\src\\flutter\\bin\\cache\\dart-sdk",
+  "java.jdt.ls.java.home": "C:\\Program Files\\Android\\Android Studio\\jbr",
+  "java.import.gradle.java.home": "C:\\Program Files\\Android\\Android Studio\\jbr",
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-17",
+      "path": "C:\\Program Files\\Android\\Android Studio\\jbr",
+      "default": true
+    }
+  ],
+  "terminal.integrated.env.windows": {
+    "ANDROID_HOME": "C:\\Users\\yusuf\\AppData\\Local\\Android\\Sdk",
+    "ANDROID_SDK_ROOT": "C:\\Users\\yusuf\\AppData\\Local\\Android\\Sdk",
+    "JAVA_HOME": "C:\\Program Files\\Android\\Android Studio\\jbr"
+  },
+  "cmake.sourceDirectory": "C:/Users/yusuf/.gemini/antigravity/scratch/erasmus_student_guide/linux"
+}
