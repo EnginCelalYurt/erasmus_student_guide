@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
-import 'repositories/tip_repository.dart';
+import 'data/auth_service.dart';
+import 'data/fake_auth_service.dart';
+import 'data/in_memory_tip_repository.dart';
+import 'data/tip_repository.dart';
 import 'screens/campus_screen.dart';
 import 'screens/city_places_screen.dart';
 import 'screens/guide_home_screen.dart';
 import 'screens/orientation_screen.dart';
 import 'screens/saved_screen.dart';
-import 'services/fake_auth_service.dart';
 import 'state/app_state.dart';
 import 'theme.dart';
 

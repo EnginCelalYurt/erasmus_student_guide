@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../data/auth_service.dart';
+import '../data/tip_repository.dart';
+import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
-import '../repositories/tip_repository.dart';
-import '../services/fake_auth_service.dart';
 import 'tip_detail_screen.dart';
 
 class CategoryTipsScreen extends StatefulWidget {
-  final String category;
+  final TipCategory category;
   final TipRepository repository;
   final AuthService authService;
 
@@ -42,7 +43,7 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
 
   Future<void> _loadTips() async {
     setState(() => _isLoading = true);
-    final list = await widget.repository.getTips(category: widget.category);
+    final list = await widget.repository.fetchTips(category: widget.category);
     if (mounted) {
       setState(() {
         _categoryTips = list;
@@ -52,10 +53,8 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
   }
 
   List<Tip> get _displayTips {
-    // 1. Search tips using repository.searchTips()
-    final searched = widget.repository.searchTips(_categoryTips, _query);
-    // 2. Rank tips using repository.rankTips()
-    return widget.repository.rankTips(searched, _sort);
+    final searched = searchTips(_categoryTips, _query);
+    return rankTips(searched, _sort);
   }
 
   void _openDetail(Tip tip) {
@@ -79,7 +78,7 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.category,
+          widget.category.label,
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
@@ -91,7 +90,7 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
                 TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Search in ${widget.category}...',
+                    hintText: 'Search in ${widget.category.label}...',
                     prefixIcon: const Icon(Icons.search, size: 20),
                     suffixIcon: _query.isNotEmpty
                         ? IconButton(
@@ -186,20 +185,36 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${tip.helpfulCount}',
+                        '${tip.helpful}',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: theme.colorScheme.primary,
                         ),
                       ),
+                      if (tip.notHelpful > 0) ...[
+                        const SizedBox(width: 6),
+                        Icon(
+                          Icons.thumb_down_alt_outlined,
+                          size: 14,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${tip.notHelpful}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],
               ),
               const SizedBox(height: 6),
               Text(
-                tip.summary,
+                tip.body,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -210,7 +225,7 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
               Row(
                 children: [
                   Text(
-                    'By ${tip.author}',
+                    'By ${tip.authorName}',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),

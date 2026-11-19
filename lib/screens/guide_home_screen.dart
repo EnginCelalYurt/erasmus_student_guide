@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../data/auth_service.dart';
+import '../data/tip_repository.dart';
+import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
-import '../repositories/tip_repository.dart';
-import '../services/fake_auth_service.dart';
 import '../utils/open_link.dart';
 import 'category_tips_screen.dart';
 import 'tip_detail_screen.dart';
@@ -29,15 +30,6 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
   List<Tip> _allTips = [];
   bool _isLoading = true;
 
-  final List<({String name, IconData icon, String subtitle})> _categories = const [
-    (name: 'Housing', icon: Icons.apartment, subtitle: 'Dorms, rent & move-in'),
-    (name: 'Transport', icon: Icons.tram, subtitle: 'Trams, Jakdojade & Migawka'),
-    (name: 'Health', icon: Icons.local_hospital, subtitle: '112, EHIC & clinic visits'),
-    (name: 'Social', icon: Icons.groups, subtitle: 'ESN, buddies & events'),
-    (name: 'Daily', icon: Icons.local_cafe, subtitle: 'BLIK, groceries & weather'),
-    (name: 'Admin', icon: Icons.badge, subtitle: 'Student ID & Eduroam'),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -52,7 +44,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
 
   Future<void> _loadTips() async {
     setState(() => _isLoading = true);
-    final tips = await widget.repository.getTips();
+    final tips = await widget.repository.fetchTips();
     if (mounted) {
       setState(() {
         _allTips = tips;
@@ -62,10 +54,8 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
   }
 
   List<Tip> get _processedTips {
-    // 1. Search tips using repository.searchTips()
-    final searched = widget.repository.searchTips(_allTips, _searchQuery);
-    // 2. Rank tips using repository.rankTips()
-    return widget.repository.rankTips(searched, _sort);
+    final searched = searchTips(_allTips, _searchQuery);
+    return rankTips(searched, _sort);
   }
 
   Future<void> _call112() async {
@@ -73,12 +63,23 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
     if (!ok && mounted) {
       await Clipboard.setData(const ClipboardData(text: '112'));
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('112 Emergency number copied to clipboard')),
+        const SnackBar(content: Text('112 Emergency number copied')),
       );
     }
   }
 
-  void _openCategory(String category) {
+  IconData _iconForCategory(TipCategory category) {
+    return switch (category) {
+      TipCategory.dormitories => Icons.apartment,
+      TipCategory.transport => Icons.tram,
+      TipCategory.emergency => Icons.local_hospital,
+      TipCategory.studentLife => Icons.groups,
+      TipCategory.dailyLife => Icons.local_cafe,
+      TipCategory.firstWeeks => Icons.flag_outlined,
+    };
+  }
+
+  void _openCategory(TipCategory category) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -124,7 +125,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
               ),
             ),
             Text(
-              user != null ? 'Welcome, ${user.name} · PŁ' : 'Politechnika Łódzka Campus Guide',
+              user != null ? 'Signed in as ${user.email}' : 'Politechnika Łódzka Campus Guide',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -147,7 +148,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                   TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
-                      hintText: 'Search dorms, tram, BLIK, 112, Wi-Fi...',
+                      hintText: 'Search dorms, tram, BLIK, 112...',
                       prefixIcon: const Icon(Icons.search),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
@@ -174,14 +175,14 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                   _buildCategoriesGrid(theme),
                   const SizedBox(height: 24),
 
-                  // 4. Most Helpful / Newest Rank Selector
+                  // 4. Most Helpful / Newest Rank Selector (Wilson score)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         _searchQuery.isNotEmpty
                             ? 'Search Results (${tips.length})'
-                            : 'Featured Advice (${tips.length})',
+                            : 'Top Advice (${tips.length})',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
@@ -313,6 +314,8 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
   }
 
   Widget _buildCategoriesGrid(ThemeData theme) {
+    final categories = TipCategory.values;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final crossAxisCount = constraints.maxWidth > 500 ? 3 : 2;
@@ -325,17 +328,15 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
             crossAxisSpacing: 8,
             mainAxisSpacing: 8,
           ),
-          itemCount: _categories.length,
+          itemCount: categories.length,
           itemBuilder: (context, index) {
-            final cat = _categories[index];
-            final count = _allTips
-                .where((t) => t.category.toLowerCase() == cat.name.toLowerCase())
-                .length;
+            final cat = categories[index];
+            final count = _allTips.where((t) => t.category == cat).length;
 
             return Card(
               child: InkWell(
                 borderRadius: BorderRadius.circular(10),
-                onTap: () => _openCategory(cat.name),
+                onTap: () => _openCategory(cat),
                 child: Padding(
                   padding: const EdgeInsets.all(10),
                   child: Row(
@@ -344,7 +345,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                         radius: 16,
                         backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
                         child: Icon(
-                          cat.icon,
+                          _iconForCategory(cat),
                           size: 16,
                           color: theme.colorScheme.primary,
                         ),
@@ -356,7 +357,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              cat.name,
+                              cat.label,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13,
@@ -405,7 +406,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      tip.category.toUpperCase(),
+                      tip.category.label.toUpperCase(),
                       style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
@@ -421,7 +422,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '${tip.helpfulCount}',
+                    '${tip.helpful}',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -440,7 +441,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                tip.summary,
+                tip.body,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -451,7 +452,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
               Row(
                 children: [
                   Text(
-                    'By ${tip.author}',
+                    'By ${tip.authorName}',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),

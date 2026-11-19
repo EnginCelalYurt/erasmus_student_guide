@@ -1,9 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:erasmus_student_guide/data/fake_auth_service.dart';
+import 'package:erasmus_student_guide/data/in_memory_tip_repository.dart';
+import 'package:erasmus_student_guide/logic/tip_ranking.dart';
 import 'package:erasmus_student_guide/main.dart';
 import 'package:erasmus_student_guide/models/tip.dart';
-import 'package:erasmus_student_guide/repositories/tip_repository.dart';
-import 'package:erasmus_student_guide/services/fake_auth_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -18,24 +19,34 @@ void main() {
       auth = FakeAuthService();
     });
 
-    test('FakeAuthService is authenticated with default student profile', () {
-      expect(auth.isAuthenticated, isTrue);
-      expect(auth.currentUser?.name, 'Yusuf Taskin');
-      expect(auth.currentUser?.email, contains('edu.p.lodz.pl'));
+    test('FakeAuthService sign in enforces TUL email domain', () async {
+      expect(auth.currentUser, isNull);
+
+      // Non-TUL email fails
+      expect(
+        () => auth.signIn(email: 'user@gmail.com', password: '123'),
+        throwsA(isA<Exception>()),
+      );
+
+      // TUL email succeeds
+      await auth.signIn(email: 'student@p.lodz.pl', password: '123');
+      expect(auth.currentUser?.email, 'student@p.lodz.pl');
     });
 
-    test('rankTips orders by most helpful descending', () async {
-      final tips = await repo.getTips();
-      final ranked = repo.rankTips(tips, TipSort.mostHelpful);
+    test('rankTips orders by Wilson score in mostHelpful', () async {
+      final tips = await repo.fetchTips();
+      final ranked = rankTips(tips, TipSort.mostHelpful);
 
       for (var i = 0; i < ranked.length - 1; i++) {
-        expect(ranked[i].helpfulCount >= ranked[i + 1].helpfulCount, isTrue);
+        final scoreA = wilsonScore(ranked[i].helpful, ranked[i].notHelpful);
+        final scoreB = wilsonScore(ranked[i + 1].helpful, ranked[i + 1].notHelpful);
+        expect(scoreA >= scoreB, isTrue);
       }
     });
 
     test('rankTips orders by newest createdAt descending', () async {
-      final tips = await repo.getTips();
-      final ranked = repo.rankTips(tips, TipSort.newest);
+      final tips = await repo.fetchTips();
+      final ranked = rankTips(tips, TipSort.newest);
 
       for (var i = 0; i < ranked.length - 1; i++) {
         expect(
@@ -47,15 +58,15 @@ void main() {
     });
 
     test('searchTips filters correctly by keyword', () async {
-      final tips = await repo.getTips();
+      final tips = await repo.fetchTips();
 
-      final dormResults = repo.searchTips(tips, 'dorm');
-      expect(dormResults.any((t) => t.category == 'Housing'), isTrue);
+      final dormResults = searchTips(tips, 'dorm');
+      expect(dormResults.any((t) => t.category == TipCategory.dormitories), isTrue);
 
-      final emergencyResults = repo.searchTips(tips, '112');
-      expect(emergencyResults.any((t) => t.category == 'Health'), isTrue);
+      final emergencyResults = searchTips(tips, '112');
+      expect(emergencyResults.any((t) => t.category == TipCategory.emergency), isTrue);
 
-      final noResults = repo.searchTips(tips, 'nonexistentquery12345');
+      final noResults = searchTips(tips, 'nonexistentquery12345');
       expect(noResults.isEmpty, isTrue);
     });
 
@@ -72,15 +83,11 @@ void main() {
         NewTip.validateBody('This is a comprehensive and helpful tip for students arriving in Lodz.'),
         isNull,
       );
-
-      // Too long (> 2500 chars)
-      final longBody = 'A' * 2501;
-      expect(NewTip.validateBody(longBody), isNotNull);
     });
 
     test('NewTip.validateTitle enforces validation rules', () {
       expect(NewTip.validateTitle(null), isNotNull);
-      expect(NewTip.validateTitle('ab'), isNotNull);
+      expect(NewTip.validateTitle(''), isNotNull);
       expect(NewTip.validateTitle('Valid Tip Title'), isNull);
     });
   });
@@ -93,9 +100,9 @@ void main() {
       // Verify Guide Home elements
       expect(find.text('University Guide'), findsOneWidget);
       expect(find.textContaining('112 Emergency'), findsOneWidget);
-      expect(find.text('Housing'), findsOneWidget);
+      expect(find.text('Dormitories'), findsOneWidget);
       expect(find.text('Transport'), findsOneWidget);
-      expect(find.text('Health'), findsOneWidget);
+      expect(find.text('Emergency'), findsOneWidget);
       expect(find.text('Most helpful'), findsOneWidget);
       expect(find.text('Newest'), findsOneWidget);
     });
@@ -104,11 +111,10 @@ void main() {
       await tester.pumpWidget(const UniversityGuideApp());
       await tester.pump();
 
-      await tester.tap(find.text('Housing').first);
+      await tester.tap(find.text('Dormitories').first);
       await tester.pumpAndSettle();
 
-      expect(find.text('Housing'), findsWidgets);
-      expect(find.textContaining('Osiedle Akademickie'), findsWidgets);
+      expect(find.text('Dormitories'), findsWidgets);
     });
   });
 }

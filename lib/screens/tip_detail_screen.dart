@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../data/auth_service.dart';
+import '../data/tip_repository.dart';
+import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
-import '../repositories/tip_repository.dart';
-import '../services/fake_auth_service.dart';
-import '../utils/open_link.dart';
 
 class TipDetailScreen extends StatefulWidget {
   final Tip tip;
@@ -22,63 +22,79 @@ class TipDetailScreen extends StatefulWidget {
 }
 
 class _TipDetailScreenState extends State<TipDetailScreen> {
-  late Tip _currentTip;
+  late Tip _tip;
+  VoteValue? _myVote;
+  bool _isLoadingVote = true;
 
   @override
   void initState() {
     super.initState();
-    _currentTip = widget.tip;
+    _tip = widget.tip;
+    _checkMyVote();
   }
 
-  IconData _iconForCategory(String category) {
-    return switch (category.toLowerCase()) {
-      'housing' => Icons.apartment,
-      'transport' => Icons.tram,
-      'health' => Icons.local_hospital,
-      'social' => Icons.groups,
-      'daily' => Icons.local_cafe,
-      'admin' => Icons.badge,
-      _ => Icons.lightbulb,
-    };
-  }
-
-  Future<void> _handleHelpful() async {
-    if (_currentTip.isMarkedHelpful) return;
-    await widget.repository.markHelpful(_currentTip.id);
-    setState(() {
-      _currentTip = _currentTip.copyWith(
-        helpfulCount: _currentTip.helpfulCount + 1,
-        isMarkedHelpful: true,
+  Future<void> _checkMyVote() async {
+    final user = widget.authService.currentUser;
+    if (user != null) {
+      final vote = await widget.repository.myVote(
+        tipId: _tip.id,
+        userId: user.uid,
       );
-    });
+      if (mounted) {
+        setState(() {
+          _myVote = vote;
+          _isLoadingVote = false;
+        });
+      }
+    } else {
+      if (mounted) setState(() => _isLoadingVote = false);
+    }
+  }
+
+  Future<void> _castVote(VoteValue value) async {
+    final user = widget.authService.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sign in with your TUL e-mail to vote.')),
+      );
+      return;
+    }
+
+    final newVote = _myVote == value ? null : value;
+    final updated = await widget.repository.vote(
+      tipId: _tip.id,
+      userId: user.uid,
+      value: newVote,
+    );
+
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Thank you! Marked as helpful.'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      setState(() {
+        _tip = updated;
+        _myVote = newVote;
+      });
     }
   }
 
-  Future<void> _launchAction(String url) async {
-    final ok = await openLink(url);
-    if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open link on this device.')),
-      );
-    }
+  IconData _iconForCategory(TipCategory category) {
+    return switch (category) {
+      TipCategory.dormitories => Icons.apartment,
+      TipCategory.transport => Icons.tram,
+      TipCategory.emergency => Icons.local_hospital,
+      TipCategory.studentLife => Icons.groups,
+      TipCategory.dailyLife => Icons.local_cafe,
+      TipCategory.firstWeeks => Icons.flag_outlined,
+    };
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final user = widget.authService.currentUser;
+    final score = wilsonScore(_tip.helpful, _tip.notHelpful);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          _currentTip.category,
+          _tip.category.label,
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
@@ -91,7 +107,7 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
                 radius: 20,
                 backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
                 child: Icon(
-                  _iconForCategory(_currentTip.category),
+                  _iconForCategory(_tip.category),
                   color: theme.colorScheme.primary,
                   size: 20,
                 ),
@@ -108,7 +124,7 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        _currentTip.category.toUpperCase(),
+                        _tip.category.label.toUpperCase(),
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -118,7 +134,7 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Shared by ${_currentTip.author}',
+                      'Shared by ${_tip.authorName} · ${_formatDate(_tip.createdAt)}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -128,110 +144,125 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Text(
-            _currentTip.title,
+            _tip.title,
             style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w800,
               height: 1.25,
             ),
           ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              _currentTip.summary,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontStyle: FontStyle.italic,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           Text(
-            'Detailed Advice',
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _currentTip.body,
+            _tip.body,
             style: theme.textTheme.bodyLarge?.copyWith(
               height: 1.6,
               fontSize: 15,
             ),
           ),
-          const SizedBox(height: 20),
-          if (_currentTip.tags.isNotEmpty) ...[
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              children: _currentTip.tags.map((tag) {
-                return Chip(
-                  label: Text('#$tag'),
-                  padding: EdgeInsets.zero,
-                  labelStyle: TextStyle(
-                    fontSize: 12,
-                    color: theme.colorScheme.primary,
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 20),
-          ],
-          if (_currentTip.actionUrl != null && _currentTip.actionLabel != null) ...[
-            FilledButton.tonalIcon(
-              onPressed: () => _launchAction(_currentTip.actionUrl!),
-              icon: const Icon(Icons.open_in_new, size: 18),
-              label: Text(_currentTip.actionLabel!),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
+          const SizedBox(height: 24),
           const Divider(),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${_currentTip.helpfulCount} students found this helpful',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (user != null)
-                    Text(
-                      'Signed in as ${user.name}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+          const SizedBox(height: 12),
+          Text(
+            'Was this advice helpful?',
+            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Wilson score: ${(score * 100).toStringAsFixed(1)}% · ${_tip.helpful} helpful · ${_tip.notHelpful} not helpful',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_isLoadingVote)
+            const SizedBox(
+              height: 40,
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: _myVote == VoteValue.helpful
+                          ? theme.colorScheme.primaryContainer
+                          : null,
+                      side: BorderSide(
+                        color: _myVote == VoteValue.helpful
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.outlineVariant,
                       ),
                     ),
-                ],
-              ),
-              FilledButton.icon(
-                onPressed: _currentTip.isMarkedHelpful ? null : _handleHelpful,
-                icon: Icon(
-                  _currentTip.isMarkedHelpful ? Icons.thumb_up : Icons.thumb_up_outlined,
-                  size: 16,
+                    onPressed: () => _castVote(VoteValue.helpful),
+                    icon: Icon(
+                      _myVote == VoteValue.helpful
+                          ? Icons.thumb_up
+                          : Icons.thumb_up_outlined,
+                      size: 16,
+                      color: _myVote == VoteValue.helpful
+                          ? theme.colorScheme.primary
+                          : null,
+                    ),
+                    label: Text(
+                      'Helpful (${_tip.helpful})',
+                      style: TextStyle(
+                        color: _myVote == VoteValue.helpful
+                            ? theme.colorScheme.primary
+                            : null,
+                        fontWeight: _myVote == VoteValue.helpful
+                            ? FontWeight.w700
+                            : null,
+                      ),
+                    ),
+                  ),
                 ),
-                label: Text(
-                  _currentTip.isMarkedHelpful ? 'Helpful' : 'Mark Helpful',
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: _myVote == VoteValue.notHelpful
+                          ? theme.colorScheme.errorContainer.withValues(alpha: 0.5)
+                          : null,
+                      side: BorderSide(
+                        color: _myVote == VoteValue.notHelpful
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.outlineVariant,
+                      ),
+                    ),
+                    onPressed: () => _castVote(VoteValue.notHelpful),
+                    icon: Icon(
+                      _myVote == VoteValue.notHelpful
+                          ? Icons.thumb_down
+                          : Icons.thumb_down_outlined,
+                      size: 16,
+                      color: _myVote == VoteValue.notHelpful
+                          ? theme.colorScheme.error
+                          : null,
+                    ),
+                    label: Text(
+                      'Not helpful (${_tip.notHelpful})',
+                      style: TextStyle(
+                        color: _myVote == VoteValue.notHelpful
+                            ? theme.colorScheme.error
+                            : null,
+                        fontWeight: _myVote == VoteValue.notHelpful
+                            ? FontWeight.w700
+                            : null,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime dt) {
+    return '${dt.day}.${dt.month}.${dt.year}';
   }
 }
