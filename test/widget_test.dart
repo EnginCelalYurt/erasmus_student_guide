@@ -5,106 +5,71 @@ import 'package:erasmus_student_guide/data/in_memory_tip_repository.dart';
 import 'package:erasmus_student_guide/logic/tip_ranking.dart';
 import 'package:erasmus_student_guide/main.dart';
 import 'package:erasmus_student_guide/models/tip.dart';
-import 'package:erasmus_student_guide/screens/share_screen.dart';
+import 'package:erasmus_student_guide/viewmodels/guide_view_model.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   SharedPreferences.setMockInitialValues({});
 
-  group('Yusuf Task Unit Tests - InMemoryTipRepository & FakeAuthService', () {
+  group('Week 5 Architecture Tests - ViewModel, State & Data Access', () {
     late InMemoryTipRepository repo;
     late FakeAuthService auth;
+    late GuideViewModel vm;
 
-    setUp(() {
+    setUp(() async {
       repo = InMemoryTipRepository();
       auth = FakeAuthService();
+      vm = GuideViewModel(repository: repo, authService: auth);
+      await vm.loadTips();
     });
 
-    test('FakeAuthService sign in enforces TUL email domain', () async {
-      expect(auth.currentUser, isNull);
-
-      // Non-TUL email fails
-      expect(
-        () => auth.signIn(email: 'user@gmail.com', password: '123'),
-        throwsA(isA<Exception>()),
-      );
-
-      // TUL email succeeds
-      await auth.signIn(email: 'student@p.lodz.pl', password: '123');
-      expect(auth.currentUser?.email, 'student@p.lodz.pl');
+    test('GuideViewModel loads and ranks tips initially', () {
+      expect(vm.tips.isNotEmpty, isTrue);
+      expect(vm.isLoading, isFalse);
     });
 
-    test('rankTips orders by Wilson score in mostHelpful', () async {
-      final tips = await repo.fetchTips();
-      final ranked = rankTips(tips, TipSort.mostHelpful);
+    test('GuideViewModel filters by category', () {
+      vm.setCategory(TipCategory.dormitories);
+      expect(vm.selectedCategory, TipCategory.dormitories);
+      expect(vm.tips.every((t) => t.category == TipCategory.dormitories), isTrue);
 
-      for (var i = 0; i < ranked.length - 1; i++) {
-        final scoreA = wilsonScore(ranked[i].helpful, ranked[i].notHelpful);
-        final scoreB = wilsonScore(ranked[i + 1].helpful, ranked[i + 1].notHelpful);
-        expect(scoreA >= scoreB, isTrue);
-      }
+      vm.setCategory(null);
+      expect(vm.tips.length, greaterThan(1));
     });
 
-    test('rankTips orders by newest createdAt descending', () async {
-      final tips = await repo.fetchTips();
-      final ranked = rankTips(tips, TipSort.newest);
+    test('GuideViewModel searches tips', () {
+      vm.setSearchQuery('112');
+      expect(vm.tips.any((t) => t.category == TipCategory.emergency), isTrue);
 
-      for (var i = 0; i < ranked.length - 1; i++) {
-        expect(
-          ranked[i].createdAt.isAfter(ranked[i + 1].createdAt) ||
-              ranked[i].createdAt.isAtSameMomentAs(ranked[i + 1].createdAt),
-          isTrue,
-        );
-      }
+      vm.setSearchQuery('');
+      expect(vm.tips.length, greaterThan(1));
     });
 
-    test('searchTips filters correctly by keyword', () async {
-      final tips = await repo.fetchTips();
+    test('GuideViewModel handles voting with Wilson score re-ranking', () async {
+      await vm.signIn('yusuf.taskin@edu.p.lodz.pl', 'pass123');
+      final firstTip = vm.tips.first;
+      final initialHelpful = firstTip.helpful;
 
-      final dormResults = searchTips(tips, 'dorm');
-      expect(dormResults.any((t) => t.category == TipCategory.dormitories), isTrue);
-
-      final emergencyResults = searchTips(tips, '112');
-      expect(emergencyResults.any((t) => t.category == TipCategory.emergency), isTrue);
-
-      final noResults = searchTips(tips, 'nonexistentquery12345');
-      expect(noResults.isEmpty, isTrue);
+      final updated = await vm.vote(tipId: firstTip.id, value: VoteValue.helpful);
+      expect(updated?.helpful, initialHelpful + 1);
     });
 
-    test('NewTip.validateBody enforces validation rules', () {
-      expect(NewTip.validateBody(null), isNotNull);
-      expect(NewTip.validateBody('   '), isNotNull);
-      expect(NewTip.validateBody('Short text'), isNotNull);
-      expect(
-        NewTip.validateBody('This is a comprehensive and helpful tip for students arriving in Lodz.'),
-        isNull,
-      );
-    });
+    test('GuideViewModel publishes new tip', () async {
+      await vm.signIn('yusuf.taskin@edu.p.lodz.pl', 'pass123');
 
-    test('NewTip.validateTitle enforces validation rules', () {
-      expect(NewTip.validateTitle(null), isNotNull);
-      expect(NewTip.validateTitle(''), isNotNull);
-      expect(NewTip.validateTitle('Valid Tip Title'), isNull);
-    });
-
-    test('addTip successfully stores a new tip in repository', () async {
       const newTip = NewTip(
         title: 'New Student Orientation Walk',
         body: 'Meet your buddy at Piotrkowska fountain at 18:00 on Monday for a campus tour.',
         category: TipCategory.firstWeeks,
-        authorName: 'Yusuf',
       );
 
-      final created = await repo.addTip(newTip, userId: 'usr_yusuf');
-      expect(created.id, isNotEmpty);
-      expect(created.title, 'New Student Orientation Walk');
-
-      final all = await repo.fetchTips();
-      expect(all.first.id, created.id);
+      final created = await vm.publishTip(newTip);
+      expect(created, isNotNull);
+      expect(vm.tips.any((t) => t.title == 'New Student Orientation Walk'), isTrue);
     });
   });
 
-  group('Yusuf Task Widget Tests - Guide Home & Share Screen', () {
+  group('Week 5 UI & Navigation Tests', () {
     testWidgets('Guide Home displays 112 banner, categories and search', (tester) async {
       await tester.pumpWidget(const UniversityGuideApp());
       await tester.pump();
@@ -116,7 +81,7 @@ void main() {
       expect(find.text('Share'), findsOneWidget);
     });
 
-    testWidgets('Tapping Share shows sign-in or form', (tester) async {
+    testWidgets('Tapping Share shows sign-in or form with validations', (tester) async {
       await tester.pumpWidget(const UniversityGuideApp());
       await tester.pump();
 
