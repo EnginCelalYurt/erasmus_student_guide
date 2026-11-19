@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'data/auth_service.dart';
 import 'data/fake_auth_service.dart';
 import 'data/in_memory_tip_repository.dart';
-import 'data/tip_repository.dart';
 import 'firebase_options.dart';
 import 'screens/campus_screen.dart';
 import 'screens/city_places_screen.dart';
@@ -12,6 +10,7 @@ import 'screens/orientation_screen.dart';
 import 'screens/saved_screen.dart';
 import 'state/app_state.dart';
 import 'theme.dart';
+import 'viewmodels/guide_view_model.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,8 +29,11 @@ class UniversityGuideApp extends StatefulWidget {
 
 class _UniversityGuideAppState extends State<UniversityGuideApp> {
   final AppState _app = AppState();
-  final TipRepository _tipRepository = InMemoryTipRepository();
-  final AuthService _authService = FakeAuthService();
+  // The only place that decides which data and sign-in implementation is used.
+  final GuideViewModel _guide = GuideViewModel(
+    repository: InMemoryTipRepository(),
+    authService: FakeAuthService(),
+  );
 
   @override
   void initState() {
@@ -45,16 +47,12 @@ class _UniversityGuideAppState extends State<UniversityGuideApp> {
       listenable: _app,
       builder: (context, _) {
         return MaterialApp(
-          title: 'Campus & University Guide',
+          title: 'Erasmus Student Guide',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
           themeMode: _app.themeMode,
-          home: MainNavigationShell(
-            app: _app,
-            tipRepository: _tipRepository,
-            authService: _authService,
-          ),
+          home: MainNavigationShell(app: _app, guide: _guide),
         );
       },
     );
@@ -63,14 +61,12 @@ class _UniversityGuideAppState extends State<UniversityGuideApp> {
 
 class MainNavigationShell extends StatefulWidget {
   final AppState app;
-  final TipRepository tipRepository;
-  final AuthService authService;
+  final GuideViewModel guide;
 
   const MainNavigationShell({
     super.key,
     required this.app,
-    required this.tipRepository,
-    required this.authService,
+    required this.guide,
   });
 
   @override
@@ -92,10 +88,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           body: IndexedStack(
             index: _index,
             children: [
-              GuideHomeScreen(
-                repository: widget.tipRepository,
-                authService: widget.authService,
-              ),
+              GuideHomeScreen(viewModel: widget.guide),
               CampusScreen(app: app),
               CityPlacesScreen(app: app),
               OrientationScreen(app: app),
