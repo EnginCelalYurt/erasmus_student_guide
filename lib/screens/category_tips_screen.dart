@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
 
-import '../data/auth_service.dart';
-import '../data/tip_repository.dart';
 import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
+import '../viewmodels/guide_view_model.dart';
 import 'tip_detail_screen.dart';
 
 class CategoryTipsScreen extends StatefulWidget {
   final TipCategory category;
-  final TipRepository repository;
-  final AuthService authService;
+  final GuideViewModel viewModel;
 
   const CategoryTipsScreen({
     super.key,
     required this.category,
-    required this.repository,
-    required this.authService,
+    required this.viewModel,
   });
 
   @override
@@ -23,17 +20,12 @@ class CategoryTipsScreen extends StatefulWidget {
 }
 
 class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
+  // Temporary interface state; tips and votes live in the view model.
   TipSort _sort = TipSort.mostHelpful;
   String _query = '';
   final _searchController = TextEditingController();
-  List<Tip> _categoryTips = [];
-  bool _isLoading = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadTips();
-  }
+  GuideViewModel get _vm => widget.viewModel;
 
   @override
   void dispose() {
@@ -41,39 +33,30 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
     super.dispose();
   }
 
-  Future<void> _loadTips() async {
-    setState(() => _isLoading = true);
-    final list = await widget.repository.fetchTips(category: widget.category);
-    if (mounted) {
-      setState(() {
-        _categoryTips = list;
-        _isLoading = false;
-      });
-    }
-  }
-
-  List<Tip> get _displayTips {
-    final searched = searchTips(_categoryTips, _query);
-    return rankTips(searched, _sort);
-  }
-
   void _openDetail(Tip tip) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => TipDetailScreen(
-          tip: tip,
-          repository: widget.repository,
-          authService: widget.authService,
-        ),
+        builder: (_) => TipDetailScreen(tipId: tip.id, viewModel: _vm),
       ),
-    ).then((_) => _loadTips());
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _vm,
+      builder: (context, _) => _buildScreen(context),
+    );
+  }
+
+  Widget _buildScreen(BuildContext context) {
     final theme = Theme.of(context);
-    final tips = _displayTips;
+    final tips = _vm.visibleTips(
+      category: widget.category,
+      query: _query,
+      sort: _sort,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -82,7 +65,7 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
-      body: _isLoading
+      body: _vm.isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -109,7 +92,7 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '${tips.length} tips found',
+                      tips.length == 1 ? '1 tip found' : '${tips.length} tips found',
                       style: theme.textTheme.labelMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                         fontWeight: FontWeight.w600,
@@ -139,7 +122,9 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 40),
                     child: Center(
                       child: Text(
-                        'No tips found matching "$_query"',
+                        _query.trim().isEmpty
+                            ? 'No tips in this category yet.'
+                            : 'No tips found matching "$_query"',
                         style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                       ),
                     ),
