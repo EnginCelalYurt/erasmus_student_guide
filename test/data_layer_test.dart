@@ -70,17 +70,18 @@ void main() {
     });
   });
 
-  group('isTulEmail', () {
-    test('accepts TUL addresses and subdomains', () {
-      expect(isTulEmail('jan@p.lodz.pl'), isTrue);
+    group('isTulEmail', () {
+    test('accepts TUL student addresses', () {
+      expect(isTulEmail('123456@edu.p.lodz.pl'), isTrue);
       expect(isTulEmail('Jan@EDU.P.LODZ.PL'), isTrue);
     });
 
     test('rejects other addresses', () {
+      expect(isTulEmail('jan@p.lodz.pl'), isFalse);
       expect(isTulEmail('jan@gmail.com'), isFalse);
-      expect(isTulEmail('jan@fakep.lodz.pl'), isFalse);
-      expect(isTulEmail('p.lodz.pl'), isFalse);
-      expect(isTulEmail('@p.lodz.pl'), isFalse);
+      expect(isTulEmail('jan@fakeedu.p.lodz.pl'), isFalse);
+      expect(isTulEmail('edu.p.lodz.pl'), isFalse);
+      expect(isTulEmail('@edu.p.lodz.pl'), isFalse);
     });
   });
 

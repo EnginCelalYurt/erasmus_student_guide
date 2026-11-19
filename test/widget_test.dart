@@ -29,9 +29,9 @@ void main() {
       );
 
       // TUL email succeeds
-      await auth.signIn(email: 'student@p.lodz.pl', password: '123');
-      expect(auth.currentUser?.email, 'student@p.lodz.pl');
-    });
+           await auth.signIn(email: '123456@edu.p.lodz.pl', password: '123');
+      expect(auth.currentUser?.email, '123456@edu.p.lodz.pl');
+          });
 
     test('rankTips orders by Wilson score in mostHelpful', () async {
       final tips = await repo.fetchTips();
