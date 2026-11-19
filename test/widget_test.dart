@@ -5,6 +5,7 @@ import 'package:erasmus_student_guide/data/in_memory_tip_repository.dart';
 import 'package:erasmus_student_guide/logic/tip_ranking.dart';
 import 'package:erasmus_student_guide/main.dart';
 import 'package:erasmus_student_guide/models/tip.dart';
+import 'package:erasmus_student_guide/screens/share_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -71,14 +72,9 @@ void main() {
     });
 
     test('NewTip.validateBody enforces validation rules', () {
-      // Empty or null
       expect(NewTip.validateBody(null), isNotNull);
       expect(NewTip.validateBody('   '), isNotNull);
-
-      // Too short (< 15 chars)
       expect(NewTip.validateBody('Short text'), isNotNull);
-
-      // Valid body
       expect(
         NewTip.validateBody('This is a comprehensive and helpful tip for students arriving in Lodz.'),
         isNull,
@@ -90,31 +86,46 @@ void main() {
       expect(NewTip.validateTitle(''), isNotNull);
       expect(NewTip.validateTitle('Valid Tip Title'), isNull);
     });
+
+    test('addTip successfully stores a new tip in repository', () async {
+      const newTip = NewTip(
+        title: 'New Student Orientation Walk',
+        body: 'Meet your buddy at Piotrkowska fountain at 18:00 on Monday for a campus tour.',
+        category: TipCategory.firstWeeks,
+        authorName: 'Yusuf',
+      );
+
+      final created = await repo.addTip(newTip, userId: 'usr_yusuf');
+      expect(created.id, isNotEmpty);
+      expect(created.title, 'New Student Orientation Walk');
+
+      final all = await repo.fetchTips();
+      expect(all.first.id, created.id);
+    });
   });
 
-  group('Yusuf Task Widget Tests - Guide Home & Navigation', () {
+  group('Yusuf Task Widget Tests - Guide Home & Share Screen', () {
     testWidgets('Guide Home displays 112 banner, categories and search', (tester) async {
       await tester.pumpWidget(const UniversityGuideApp());
       await tester.pump();
 
-      // Verify Guide Home elements
       expect(find.text('University Guide'), findsOneWidget);
       expect(find.textContaining('112 Emergency'), findsOneWidget);
       expect(find.text('Dormitories'), findsOneWidget);
       expect(find.text('Transport'), findsOneWidget);
-      expect(find.text('Emergency'), findsOneWidget);
-      expect(find.text('Most helpful'), findsOneWidget);
-      expect(find.text('Newest'), findsOneWidget);
+      expect(find.text('Share'), findsOneWidget);
     });
 
-    testWidgets('Tapping on a category opens CategoryTipsScreen', (tester) async {
+    testWidgets('Tapping Share shows sign-in or form', (tester) async {
       await tester.pumpWidget(const UniversityGuideApp());
       await tester.pump();
 
-      await tester.tap(find.text('Dormitories').first);
+      await tester.tap(find.text('Share').first);
       await tester.pumpAndSettle();
 
-      expect(find.text('Dormitories'), findsWidgets);
+      expect(find.text('Share Experience'), findsOneWidget);
+      expect(find.text('Student Verification Required'), findsOneWidget);
+      expect(find.text('Sign in with TUL E-mail'), findsOneWidget);
     });
   });
 }

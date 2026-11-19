@@ -9,6 +9,7 @@ import 'screens/city_places_screen.dart';
 import 'screens/guide_home_screen.dart';
 import 'screens/orientation_screen.dart';
 import 'screens/saved_screen.dart';
+import 'screens/share_screen.dart';
 import 'state/app_state.dart';
 import 'theme.dart';
 
@@ -92,6 +93,11 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                 repository: widget.tipRepository,
                 authService: widget.authService,
               ),
+              ShareScreen(
+                repository: widget.tipRepository,
+                authService: widget.authService,
+                onTipPublished: () => setState(() => _index = 0),
+              ),
               CampusScreen(app: app),
               CityPlacesScreen(app: app),
               OrientationScreen(app: app),
@@ -106,6 +112,11 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                 icon: Icon(Icons.lightbulb_outline),
                 selectedIcon: Icon(Icons.lightbulb),
                 label: 'Guide',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.add_circle_outline),
+                selectedIcon: Icon(Icons.add_circle),
+                label: 'Share',
               ),
               const NavigationDestination(
                 icon: Icon(Icons.account_balance_outlined),
