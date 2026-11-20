@@ -22,6 +22,13 @@ class FakeAuthService implements AuthService {
   }
 
   @override
+  Future<void> register({
+    required String email,
+    required String password,
+  }) {
+    return signIn(email: email, password: password);
+  }
+  @override
   Future<void> signOut() async {
     _user = null;
     _controller.add(null);
