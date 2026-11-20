@@ -25,10 +25,9 @@ abstract class AuthService {
   Future<void> signOut();
 }
 
-// Aldiyar: confirm the real student domain; subdomains of p.lodz.pl are accepted.
+// Student addresses look like 123456@edu.p.lodz.pl (staff use p.lodz.pl).
 bool isTulEmail(String email) {
   final parts = email.trim().toLowerCase().split('@');
   if (parts.length != 2 || parts[0].isEmpty) return false;
-  final domain = parts[1];
-  return domain == 'p.lodz.pl' || domain.endsWith('.p.lodz.pl');
+  return parts[1] == 'edu.p.lodz.pl';
 }
