@@ -29,9 +29,15 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
 
   Future<void> _castVote(VoteValue value) async {
     final outcome = await _vm.vote(widget.tipId, value);
-    if (outcome == VoteOutcome.signInRequired && mounted) {
+    if (!mounted) return;
+    final message = switch (outcome) {
+      VoteOutcome.signInRequired => 'Sign in with your TUL e-mail to vote.',
+      VoteOutcome.failed => 'Could not save your vote. Check your connection.',
+      VoteOutcome.saved => null,
+    };
+    if (message != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sign in with your TUL e-mail to vote.')),
+        SnackBar(content: Text(message)),
       );
     }
   }
