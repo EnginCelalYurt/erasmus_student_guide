@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /tips/{tipId} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.helpful == 0
+        && request.resource.data.notHelpful == 0;
+
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['helpful', 'notHelpful'])
+        && request.resource.data.helpful >= 0
+        && request.resource.data.notHelpful >= 0
+        && math.abs(request.resource.data.helpful - resource.data.helpful) <= 1
+        && math.abs(request.resource.data.notHelpful - resource.data.notHelpful) <= 1;
+
+      allow delete: if false;
+
+      match /votes/{userId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if request.auth != null
+          && request.auth.uid == userId
+          && request.resource.data.value in ['helpful', 'notHelpful'];
+        allow delete: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+  }
+}
