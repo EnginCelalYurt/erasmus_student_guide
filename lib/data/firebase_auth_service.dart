@@ -44,10 +44,12 @@ class FirebaseAuthService implements AuthService {
   }) async {
     _checkEmail(email);
     try {
-      await _auth.createUserWithEmailAndPassword(
+      final credential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
+      // Firestore rules only let verified TUL e-mail addresses write.
+      await credential.user?.sendEmailVerification();
     } on FirebaseAuthException catch (e) {
       throw AuthException(_messageFor(e.code));
     }

@@ -2,31 +2,64 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    match /tips/{tipId} {
-      allow read: if request.auth != null;
+    // A signed-in TUL student whose e-mail address is verified.
+    function isVerifiedTulStudent() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('.*@edu[.]p[.]lodz[.]pl');
+    }
 
-      allow create: if request.auth != null
+    match /tips/{tipId} {
+      // Anyone can read tips, also students who have not arrived yet.
+      allow read: if true;
+
+      allow create: if isVerifiedTulStudent()
         && request.resource.data.authorId == request.auth.uid
         && request.resource.data.helpful == 0
         && request.resource.data.notHelpful == 0;
 
-      allow update: if request.auth != null
+      // Counters may only change together with the user's own vote document,
+      // in the same transaction, and by exactly what that vote change implies.
+      allow update: if isVerifiedTulStudent()
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['helpful', 'notHelpful'])
         && request.resource.data.helpful >= 0
         && request.resource.data.notHelpful >= 0
-        && math.abs(request.resource.data.helpful - resource.data.helpful) <= 1
-        && math.abs(request.resource.data.notHelpful - resource.data.notHelpful) <= 1;
+        && request.resource.data.helpful - resource.data.helpful
+             == helpfulOf(voteAfter(tipId)) - helpfulOf(voteBefore(tipId))
+        && request.resource.data.notHelpful - resource.data.notHelpful
+             == notHelpfulOf(voteAfter(tipId)) - notHelpfulOf(voteBefore(tipId));
 
       allow delete: if false;
 
       match /votes/{userId} {
         allow read: if request.auth != null && request.auth.uid == userId;
-        allow create, update: if request.auth != null
+        allow create, update: if isVerifiedTulStudent()
           && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly(['value'])
           && request.resource.data.value in ['helpful', 'notHelpful'];
-        allow delete: if request.auth != null && request.auth.uid == userId;
+        allow delete: if isVerifiedTulStudent() && request.auth.uid == userId;
       }
+    }
+
+    // The signed-in user's vote on a tip before / after this write: 'none',
+    // 'helpful' or 'notHelpful'.
+    function voteBefore(tipId) {
+      let path = /databases/$(database)/documents/tips/$(tipId)/votes/$(request.auth.uid);
+      return exists(path) ? get(path).data.value : 'none';
+    }
+
+    function voteAfter(tipId) {
+      let path = /databases/$(database)/documents/tips/$(tipId)/votes/$(request.auth.uid);
+      return existsAfter(path) ? getAfter(path).data.value : 'none';
+    }
+
+    function helpfulOf(vote) {
+      return vote == 'helpful' ? 1 : 0;
+    }
+
+    function notHelpfulOf(vote) {
+      return vote == 'notHelpful' ? 1 : 0;
     }
   }
 }
