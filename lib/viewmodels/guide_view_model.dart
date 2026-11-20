@@ -1,11 +1,12 @@
 import 'package:flutter/foundation.dart';
 
 import '../data/auth_service.dart';
+import '../data/caching_tip_repository.dart';
 import '../data/tip_repository.dart';
 import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
 
-enum VoteOutcome { saved, signInRequired }
+enum VoteOutcome { saved, signInRequired, failed }
 
 /// Application state for the guide screens.
 ///
@@ -32,6 +33,13 @@ class GuideViewModel extends ChangeNotifier {
   String? get error => _error;
   AppUser? get currentUser => _authService.currentUser;
   bool get isSignedIn => currentUser != null;
+
+  /// True when the tips on screen are the copy saved on the device because
+  /// the server could not be reached.
+  bool get showingSavedCopy {
+    final repo = _repository;
+    return repo is CachingTipRepository && repo.servedFromCache;
+  }
 
   Future<void> load() async {
     _isLoading = true;
@@ -81,8 +89,13 @@ class GuideViewModel extends ChangeNotifier {
     _forgetVotesOfOtherUser();
     final user = currentUser;
     if (user == null || _myVotes.containsKey(tipId)) return;
-    _myVotes[tipId] = await _repository.myVote(tipId: tipId, userId: user.uid);
-    notifyListeners();
+    try {
+      _myVotes[tipId] =
+          await _repository.myVote(tipId: tipId, userId: user.uid);
+      notifyListeners();
+    } catch (_) {
+      // No network and no saved copy: show no vote; the user can still retry.
+    }
   }
 
   /// Tapping the same vote again removes it; tapping the other one switches it.
@@ -91,19 +104,23 @@ class GuideViewModel extends ChangeNotifier {
     final user = currentUser;
     if (user == null) return VoteOutcome.signInRequired;
 
-    final previous = _myVotes.containsKey(tipId)
-        ? _myVotes[tipId]
-        : await _repository.myVote(tipId: tipId, userId: user.uid);
-    final next = previous == value ? null : value;
-    final updated = await _repository.vote(
-      tipId: tipId,
-      userId: user.uid,
-      value: next,
-    );
-    _myVotes[tipId] = next;
-    _replaceTip(updated);
-    notifyListeners();
-    return VoteOutcome.saved;
+    try {
+      final previous = _myVotes.containsKey(tipId)
+          ? _myVotes[tipId]
+          : await _repository.myVote(tipId: tipId, userId: user.uid);
+      final next = previous == value ? null : value;
+      final updated = await _repository.vote(
+        tipId: tipId,
+        userId: user.uid,
+        value: next,
+      );
+      _myVotes[tipId] = next;
+      _replaceTip(updated);
+      notifyListeners();
+      return VoteOutcome.saved;
+    } catch (_) {
+      return VoteOutcome.failed;
+    }
   }
 
   /// Publishes a tip for the signed-in user. Throws [AuthException] when signed out.
