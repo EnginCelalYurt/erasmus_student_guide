@@ -50,7 +50,6 @@ class _CityPlacesScreenState extends State<CityPlacesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final kinds = [
       'all',
       ...{for (final p in widget.app.places) p.kind},
@@ -92,6 +91,7 @@ class _CityPlacesScreenState extends State<CityPlacesScreen> {
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _query.isNotEmpty
                   ? IconButton(
+                      tooltip: 'Clear search',
                       icon: const Icon(Icons.clear, size: 18),
                       onPressed: () {
                         _searchController.clear();
@@ -197,13 +197,16 @@ class _PlaceListItem extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            '· ${place.area}',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                          Flexible(
+                            child: Text(
+                              '· ${place.area}',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const Spacer(),
                           IconButton(
                             iconSize: 20,
                             padding: EdgeInsets.zero,

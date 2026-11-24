@@ -77,6 +77,7 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
                     prefixIcon: const Icon(Icons.search, size: 20),
                     suffixIcon: _query.isNotEmpty
                         ? IconButton(
+                            tooltip: 'Clear search',
                             icon: const Icon(Icons.clear, size: 18),
                             onPressed: () {
                               _searchController.clear();
@@ -88,8 +89,11 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
                   onChanged: (val) => setState(() => _query = val),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     Text(
                       tips.length == 1 ? '1 tip found' : '${tips.length} tips found',

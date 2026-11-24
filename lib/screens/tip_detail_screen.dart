@@ -184,6 +184,8 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
                     ),
                     label: Text(
                       'Helpful (${tip.helpful})',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: myVote == VoteValue.helpful
                             ? theme.colorScheme.primary
@@ -220,6 +222,8 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
                     ),
                     label: Text(
                       'Not helpful (${tip.notHelpful})',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: myVote == VoteValue.notHelpful
                             ? theme.colorScheme.error

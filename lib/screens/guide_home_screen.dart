@@ -119,7 +119,38 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 36),
                 children: [
-                  // 1. 112 Emergency Banner
+                  // 1. Offline / Saved copy banner (if applicable)
+                  if (_vm.showingSavedCopy) ...[
+                    Material(
+                      color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.cloud_off_outlined,
+                              size: 16,
+                              color: theme.colorScheme.onSecondaryContainer,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Showing saved offline copy · Pull down to refresh',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSecondaryContainer,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+
+                  // 2. 112 Emergency Banner
                   _build112Banner(theme),
                   const SizedBox(height: 14),
 
@@ -131,6 +162,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                       prefixIcon: const Icon(Icons.search),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
+                              tooltip: 'Clear search',
                               icon: const Icon(Icons.clear, size: 18),
                               onPressed: () {
                                 _searchController.clear();
@@ -155,8 +187,11 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                   const SizedBox(height: 24),
 
                   // 4. Most Helpful / Newest Rank Selector (Wilson score)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       Text(
                         _searchQuery.isNotEmpty
@@ -258,12 +293,16 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          '112 Emergency Helpline',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 15,
-                            color: theme.colorScheme.onErrorContainer,
+                        Flexible(
+                          child: Text(
+                            '112 Emergency Helpline',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                              color: theme.colorScheme.onErrorContainer,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         const SizedBox(width: 6),
