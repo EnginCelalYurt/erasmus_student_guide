@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../data/draft_store.dart';
 import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
 import '../utils/open_link.dart';
 import '../viewmodels/guide_view_model.dart';
 import 'category_tips_screen.dart';
+import 'share_tip_screen.dart';
 import 'tip_detail_screen.dart';
 
 class GuideHomeScreen extends StatefulWidget {
   final GuideViewModel viewModel;
+  final DraftStore? draftStore;
 
-  const GuideHomeScreen({super.key, required this.viewModel});
+  const GuideHomeScreen({
+    super.key,
+    required this.viewModel,
+    this.draftStore,
+  });
 
   @override
   State<GuideHomeScreen> createState() => _GuideHomeScreenState();
@@ -77,6 +84,18 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
     );
   }
 
+  void _openShareTip() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ShareTipScreen(
+          viewModel: _vm,
+          draftStore: widget.draftStore,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -91,6 +110,13 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
     final tips = _vm.visibleTips(query: _searchQuery, sort: _sort);
 
     return Scaffold(
+      floatingActionButton: _vm.isSignedIn
+          ? FloatingActionButton.extended(
+              onPressed: _openShareTip,
+              icon: const Icon(Icons.edit_outlined),
+              label: const Text('Share tip'),
+            )
+          : null,
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

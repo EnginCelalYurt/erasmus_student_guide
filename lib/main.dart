@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'data/auth_service.dart';
 import 'data/caching_tip_repository.dart';
+import 'data/draft_store.dart';
 import 'data/fake_auth_service.dart';
 import 'data/firebase_auth_service.dart';
 import 'data/firestore_tip_repository.dart';
@@ -31,6 +32,7 @@ Future<void> main() async {
         store: store,
       ),
       authService: FirebaseAuthService(),
+      draftStore: DraftStore(store),
     ),
   );
 }
@@ -38,11 +40,13 @@ Future<void> main() async {
 class UniversityGuideApp extends StatefulWidget {
   final TipRepository? repository;
   final AuthService? authService;
+  final DraftStore? draftStore;
 
   const UniversityGuideApp({
     super.key,
     this.repository,
     this.authService,
+    this.draftStore,
   });
 
   @override
@@ -74,7 +78,11 @@ class _UniversityGuideAppState extends State<UniversityGuideApp> {
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
           themeMode: _app.themeMode,
-          home: MainNavigationShell(app: _app, guide: _guide),
+          home: MainNavigationShell(
+            app: _app,
+            guide: _guide,
+            draftStore: widget.draftStore,
+          ),
         );
       },
     );
@@ -84,11 +92,13 @@ class _UniversityGuideAppState extends State<UniversityGuideApp> {
 class MainNavigationShell extends StatefulWidget {
   final AppState app;
   final GuideViewModel guide;
+  final DraftStore? draftStore;
 
   const MainNavigationShell({
     super.key,
     required this.app,
     required this.guide,
+    this.draftStore,
   });
 
   @override
@@ -110,7 +120,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           body: IndexedStack(
             index: _index,
             children: [
-              GuideHomeScreen(viewModel: widget.guide),
+              GuideHomeScreen(
+                viewModel: widget.guide,
+                draftStore: widget.draftStore,
+              ),
               CampusScreen(app: app),
               CityPlacesScreen(app: app),
               OrientationScreen(app: app),
