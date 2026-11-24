@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../data/auth_service.dart';
 import '../data/caching_tip_repository.dart';
+import '../data/in_memory_tip_repository.dart';
 import '../data/tip_repository.dart';
 import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
@@ -39,6 +40,24 @@ class GuideViewModel extends ChangeNotifier {
   bool get showingSavedCopy {
     final repo = _repository;
     return repo is CachingTipRepository && repo.servedFromCache;
+  }
+
+  /// True when the app is running with fictional in-memory sample data.
+  bool get usingSampleData => _repository is InMemoryTipRepository;
+
+  Future<void> signIn({
+    required String email,
+    required String password,
+  }) async {
+    await _authService.signIn(email: email, password: password);
+    _forgetVotesOfOtherUser();
+    notifyListeners();
+  }
+
+  Future<void> signOut() async {
+    await _authService.signOut();
+    _forgetVotesOfOtherUser();
+    notifyListeners();
   }
 
   Future<void> load() async {

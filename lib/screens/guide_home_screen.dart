@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../data/auth_service.dart';
 import '../data/draft_store.dart';
 import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
@@ -97,6 +98,13 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
     );
   }
 
+  Future<void> _showSignInDialog() {
+    return showDialog<void>(
+      context: context,
+      builder: (_) => _SignInDialog(viewModel: _vm),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -132,13 +140,31 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
               ),
             ),
             Text(
-              user != null ? 'Signed in as ${user.email}' : 'Politechnika Łódzka Campus Guide',
+              user != null
+                  ? 'Signed in as ${user.email}'
+                  : (_vm.usingSampleData
+                      ? 'Demo · Fictional sample data'
+                      : 'Politechnika Łódzka Campus Guide'),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ],
         ),
+        actions: [
+          if (user == null)
+            TextButton.icon(
+              onPressed: _showSignInDialog,
+              icon: const Icon(Icons.login, size: 18),
+              label: const Text('Sign in'),
+            )
+          else
+            IconButton(
+              tooltip: 'Sign out',
+              icon: const Icon(Icons.logout),
+              onPressed: _vm.signOut,
+            ),
+        ],
       ),
       body: Column(
         children: [
@@ -559,6 +585,105 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SignInDialog extends StatefulWidget {
+  final GuideViewModel viewModel;
+
+  const _SignInDialog({required this.viewModel});
+
+  @override
+  State<_SignInDialog> createState() => _SignInDialogState();
+}
+
+class _SignInDialogState extends State<_SignInDialog> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  String? _errorText;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() {
+      _busy = true;
+      _errorText = null;
+    });
+    try {
+      await widget.viewModel.signIn(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+      if (mounted) Navigator.pop(context);
+    } on AuthException catch (e) {
+      if (mounted) setState(() => _errorText = e.message);
+    } catch (_) {
+      if (mounted) setState(() => _errorText = 'Sign-in failed. Try again.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('TUL Student Sign-In'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Use your @edu.p.lodz.pl address to vote and share tips.',
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _emailController,
+            enabled: !_busy,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'TUL e-mail',
+              hintText: '123456@edu.p.lodz.pl',
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _passwordController,
+            enabled: !_busy,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'Password',
+            ),
+            onSubmitted: (_) => _busy ? null : _submit(),
+          ),
+          if (_errorText != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              _errorText!,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _busy ? null : _submit,
+          child: Text(_busy ? 'Signing in...' : 'Sign in'),
+        ),
+      ],
     );
   }
 }

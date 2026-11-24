@@ -128,4 +128,37 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('labels fictional sample data and supports TUL sign-in flow', (tester) async {
+    final vm = GuideViewModel(
+      repository: InMemoryTipRepository(),
+      authService: FakeAuthService(),
+    );
+    await tester.pumpWidget(MaterialApp(home: GuideHomeScreen(viewModel: vm)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Demo · Fictional sample data'), findsOneWidget);
+    expect(find.text('Share tip'), findsNothing);
+
+    await tester.tap(find.text('Sign in'));
+    await tester.pumpAndSettle();
+
+    final dialogFields = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(dialogFields.at(0), 'user@gmail.com');
+    await tester.enterText(dialogFields.at(1), 'pass123');
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Use your TUL e-mail address.'), findsOneWidget);
+
+    await tester.enterText(dialogFields.at(0), '123456@edu.p.lodz.pl');
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Signed in as 123456@edu.p.lodz.pl'), findsOneWidget);
+    expect(find.text('Share tip'), findsOneWidget);
+  });
 }
