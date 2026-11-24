@@ -398,7 +398,9 @@ class _CampusScreenState extends State<CampusScreen> {
                             iconSize: 20,
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
-                            tooltip: isSaved ? 'Remove from Saved' : 'Bookmark Facility',
+                            tooltip: isSaved
+                                ? 'Remove ${fac.name} from saved'
+                                : 'Bookmark ${fac.name}',
                             icon: Icon(
                               isSaved ? Icons.bookmark : Icons.bookmark_border,
                               color: isSaved ? theme.colorScheme.primary : null,

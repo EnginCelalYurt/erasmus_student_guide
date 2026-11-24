@@ -6,6 +6,7 @@ import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
 import '../utils/open_link.dart';
 import '../viewmodels/guide_view_model.dart';
+import '../widgets/empty_state.dart';
 import 'category_tips_screen.dart';
 import 'share_tip_screen.dart';
 import 'tip_detail_screen.dart';
@@ -112,6 +113,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
     return Scaffold(
       floatingActionButton: _vm.isSignedIn
           ? FloatingActionButton.extended(
+              tooltip: 'Share a new tip',
               onPressed: _openShareTip,
               icon: const Icon(Icons.edit_outlined),
               label: const Text('Share tip'),
@@ -138,36 +140,46 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
           ],
         ),
       ),
-      body: _vm.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+      body: Column(
+        children: [
+          if (_vm.isLoading)
+            Semantics(
+              label: 'Loading tips',
+              child: const LinearProgressIndicator(minHeight: 3),
+            ),
+          Expanded(
+            child: RefreshIndicator(
               onRefresh: _vm.load,
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 36),
                 children: [
-                  // 1. Offline / Saved copy banner (if applicable)
+                  // 1. Offline banner with Retry
                   if (_vm.showingSavedCopy) ...[
                     Material(
-                      color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.7),
+                      color: theme.colorScheme.secondaryContainer,
                       borderRadius: BorderRadius.circular(10),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         child: Row(
                           children: [
                             Icon(
                               Icons.cloud_off_outlined,
-                              size: 16,
+                              size: 18,
                               color: theme.colorScheme.onSecondaryContainer,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Showing saved offline copy · Pull down to refresh',
+                                'Offline, may be outdated',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSecondaryContainer,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
+                            ),
+                            TextButton(
+                              onPressed: _vm.isLoading ? null : _vm.load,
+                              child: const Text('Retry'),
                             ),
                           ],
                         ),
@@ -249,38 +261,50 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
 
                   // 5. Tips List (Ranked & Searched)
                   if (_vm.error != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 40),
-                      child: Center(
-                        child: Text(
-                          _vm.error!,
-                          style: TextStyle(color: theme.colorScheme.error),
-                        ),
-                      ),
+                    EmptyState(
+                      icon: Icons.cloud_off_outlined,
+                      title: 'Could Not Load Tips',
+                      message: _vm.error!,
+                      actionLabel: 'Retry',
+                      onAction: _vm.load,
                     )
-                  else if (tips.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 40),
-                      child: Center(
-                        child: Text(
-                          _searchQuery.trim().isEmpty
-                              ? 'No tips yet.'
-                              : 'No tips found for "$_searchQuery"',
-                          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ),
+                  else if (tips.isEmpty && !_vm.isLoading)
+                    EmptyState(
+                      icon: _searchQuery.trim().isEmpty
+                          ? Icons.lightbulb_outline
+                          : Icons.search_off,
+                      title: _searchQuery.trim().isEmpty
+                          ? 'No Tips Yet'
+                          : 'No Matching Tips',
+                      message: _searchQuery.trim().isEmpty
+                          ? 'Check back soon for advice from TUL students.'
+                          : 'No tips found for "$_searchQuery".',
+                      actionLabel: _searchQuery.trim().isNotEmpty ? 'Clear search' : null,
+                      onAction: _searchQuery.trim().isNotEmpty
+                          ? () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            }
+                          : null,
                     )
                   else
                     ...tips.map((tip) => _buildTipCard(theme, tip)),
                 ],
               ),
             ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _build112Banner(ThemeData theme) {
-    return Material(
-      color: theme.colorScheme.errorContainer.withValues(alpha: 0.75),
+    return Semantics(
+      button: true,
+      excludeSemantics: true,
+      label: 'Call 112 Emergency Helpline, free multilingual operator. Long press to copy number.',
+      child: Material(
+        color: theme.colorScheme.errorContainer.withValues(alpha: 0.75),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.3)),
@@ -338,11 +362,12 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                             color: theme.colorScheme.error.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: const Text(
+                          child: Text(
                             'FREE',
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onErrorContainer,
                             ),
                           ),
                         ),
@@ -366,6 +391,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -389,7 +415,11 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
             final cat = categories[index];
             final count = _vm.visibleCount(cat);
 
-            return Card(
+            return Semantics(
+              button: true,
+              excludeSemantics: true,
+              label: '${cat.label}, ${count == 1 ? '1 tip' : '$count tips'}',
+              child: Card(
               child: InkWell(
                 borderRadius: BorderRadius.circular(10),
                 onTap: () => _openCategory(cat),
@@ -435,6 +465,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                   ),
                 ),
               ),
+            ),
             );
           },
         );

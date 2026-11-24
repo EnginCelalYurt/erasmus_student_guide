@@ -161,7 +161,11 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: Semantics(
+                    button: true,
+                    selected: myVote == VoteValue.helpful,
+                    label: 'Helpful, ${tip.helpful} votes',
+                    child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       backgroundColor: myVote == VoteValue.helpful
                           ? theme.colorScheme.primaryContainer
@@ -196,10 +200,15 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
                       ),
                     ),
                   ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: OutlinedButton.icon(
+                  child: Semantics(
+                    button: true,
+                    selected: myVote == VoteValue.notHelpful,
+                    label: 'Not helpful, ${tip.notHelpful} votes',
+                    child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       backgroundColor: myVote == VoteValue.notHelpful
                           ? theme.colorScheme.errorContainer.withValues(alpha: 0.5)
@@ -233,6 +242,7 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
                             : null,
                       ),
                     ),
+                  ),
                   ),
                 ),
               ],
