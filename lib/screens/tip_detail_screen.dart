@@ -2,16 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
+import '../utils/share_tip.dart';
 import '../viewmodels/guide_view_model.dart';
 
 class TipDetailScreen extends StatefulWidget {
   final String tipId;
   final GuideViewModel viewModel;
+  final ShareTextFn? shareFn;
 
   const TipDetailScreen({
     super.key,
     required this.tipId,
     required this.viewModel,
+    this.shareFn,
   });
 
   @override
@@ -38,6 +41,16 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
     if (message != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
+      );
+    }
+  }
+
+  Future<void> _shareTip(Tip tip) async {
+    final outcome = await shareTip(tip, shareFn: widget.shareFn);
+    if (!mounted) return;
+    if (outcome == ShareOutcome.copiedToClipboard) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tip copied to clipboard')),
       );
     }
   }
@@ -79,6 +92,13 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
           tip.category.label,
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Share tip',
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () => _shareTip(tip),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
