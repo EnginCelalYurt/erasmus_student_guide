@@ -789,27 +789,50 @@ class _SignInDialogState extends State<_SignInDialog> {
     _passwordController.dispose();
     super.dispose();
   }
+  Future<void> _submit() => _run(
+    action: widget.viewModel.signIn,
+    failureText: 'Sign-in failed. Try again.',
+  );
 
-  Future<void> _submit() async {
+  Future<void> _register() => _run(
+    action: widget.viewModel.register,
+    failureText: 'Could not create the account. Try again.',
+    successMessage:
+        'Account created. Check your TUL e-mail and confirm the address '
+        'to vote and share tips.',
+  );
+
+  Future<void> _run({
+    required Future<void> Function({
+      required String email,
+      required String password,
+    })
+    action,
+    required String failureText,
+    String? successMessage,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
     setState(() {
       _busy = true;
       _errorText = null;
     });
     try {
-      await widget.viewModel.signIn(
-        email: _emailController.text,
+      await action(
+        email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+      if (successMessage != null) {
+        messenger.showSnackBar(SnackBar(content: Text(successMessage)));
+      }
       if (mounted) Navigator.pop(context);
     } on AuthException catch (e) {
       if (mounted) setState(() => _errorText = e.message);
     } catch (_) {
-      if (mounted) setState(() => _errorText = 'Sign-in failed. Try again.');
+      if (mounted) setState(() => _errorText = failureText);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -858,9 +881,13 @@ class _SignInDialogState extends State<_SignInDialog> {
           onPressed: _busy ? null : () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
+                TextButton(
+          onPressed: _busy ? null : _register,
+          child: const Text('Create account'),
+        ),
         FilledButton(
           onPressed: _busy ? null : _submit,
-          child: Text(_busy ? 'Signing in...' : 'Sign in'),
+          child: Text(_busy ? 'Please wait...' : 'Sign in'),
         ),
       ],
     );
