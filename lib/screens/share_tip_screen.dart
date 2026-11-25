@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'package:firebase_core/firebase_core.dart' show FirebaseException;
 import '../data/auth_service.dart';
 import '../data/draft_store.dart';
 import '../models/tip.dart';
@@ -137,9 +137,17 @@ class _ShareTipScreenState extends State<ShareTipScreen> {
         const SnackBar(content: Text('Tip published!')),
       );
       Navigator.pop(context, true);
-    } on AuthException catch (e) {
+        } on AuthException catch (e) {
       if (!mounted) return;
       setState(() => _submitError = e.message);
+    } on FirebaseException catch (e) {
+      if (!mounted) return;
+      setState(
+        () => _submitError = e.code == 'permission-denied'
+            ? 'Confirm your TUL e-mail first (check the spam folder), '
+                'then sign out and sign in again.'
+            : 'Could not publish your tip. Check your connection.',
+      );
     } catch (_) {
       if (!mounted) return;
       setState(
