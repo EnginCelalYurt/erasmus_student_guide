@@ -797,9 +797,9 @@ class _SignInDialogState extends State<_SignInDialog> {
   Future<void> _register() => _run(
     action: widget.viewModel.register,
     failureText: 'Could not create the account. Try again.',
-    successMessage:
-        'Account created. Check your TUL e-mail and confirm the address '
-        'to vote and share tips.',
+        successMessage:
+        'Account created. Check your TUL e-mail (also the spam folder) '
+        'and confirm the address to vote and share tips.',
   );
 
   Future<void> _run({
