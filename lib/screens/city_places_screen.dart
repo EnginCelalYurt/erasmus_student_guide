@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/guide_topic.dart';
 import '../state/app_state.dart';
+import '../theme.dart';
 import '../utils/open_link.dart';
 
 class CityPlacesScreen extends StatefulWidget {
@@ -86,9 +87,9 @@ class _CityPlacesScreenState extends State<CityPlacesScreen> {
         children: [
           TextField(
             controller: _searchController,
-            decoration: InputDecoration(
+            decoration: AppTheme.searchDecoration(
+              context,
               hintText: 'Search Piotrkowska, station, park, mall...',
-              prefixIcon: const Icon(Icons.search),
               suffixIcon: _query.isNotEmpty
                   ? IconButton(
                       tooltip: 'Clear search',

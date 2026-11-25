@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../models/tip.dart';
 import '../state/app_state.dart';
 import '../utils/open_link.dart';
+import '../viewmodels/guide_view_model.dart';
 import '../widgets/empty_state.dart';
+import 'tip_detail_screen.dart';
 
 class SavedScreen extends StatelessWidget {
   final AppState app;
+  final GuideViewModel? guide;
 
-  const SavedScreen({super.key, required this.app});
+  const SavedScreen({super.key, required this.app, this.guide});
 
   Future<void> _handleLink(BuildContext context, String url) async {
     final ok = await openLink(url);
@@ -22,6 +26,12 @@ class SavedScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final savedTips = app.savedTips;
+    final savedGuideTips = guide == null
+        ? const <Tip>[]
+        : guide!
+            .visibleTips()
+            .where((tip) => app.isTipSaved(tip.id))
+            .toList();
     final savedPlaces = app.savedPlaces;
     final savedFacilities = app.savedFacilities;
     final total = app.totalSavedCount;
@@ -84,18 +94,51 @@ class SavedScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                 ],
-                if (savedTips.isNotEmpty) ...[
+                if (savedGuideTips.isNotEmpty || savedTips.isNotEmpty) ...[
                   Row(
                     children: [
                       Icon(Icons.lightbulb, size: 18, color: theme.colorScheme.primary),
                       const SizedBox(width: 6),
                       Text(
-                        'Survival Advice & Life Hacks (${savedTips.length})',
+                        'Saved Tips (${savedGuideTips.length + savedTips.length})',
                         style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
+                  ...savedGuideTips.map(
+                    (tip) => Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          radius: 18,
+                          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                          child: Icon(Icons.tips_and_updates, size: 18, color: theme.colorScheme.primary),
+                        ),
+                        title: Text(tip.title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                        subtitle: Text(
+                          '${tip.category.label} · ${tip.body}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.bookmark_remove_outlined),
+                          tooltip: 'Remove',
+                          onPressed: () => app.toggleSaveTip(tip.id),
+                        ),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TipDetailScreen(
+                              tipId: tip.id,
+                              viewModel: guide!,
+                              app: app,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                   ...savedTips.map(
                     (tip) => Card(
                       margin: const EdgeInsets.only(bottom: 8),

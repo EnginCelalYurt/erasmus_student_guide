@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
+import '../state/app_state.dart';
+import '../theme.dart';
 import '../viewmodels/guide_view_model.dart';
 import '../widgets/empty_state.dart';
 import 'tip_detail_screen.dart';
@@ -9,11 +11,13 @@ import 'tip_detail_screen.dart';
 class CategoryTipsScreen extends StatefulWidget {
   final TipCategory category;
   final GuideViewModel viewModel;
+  final AppState? app;
 
   const CategoryTipsScreen({
     super.key,
     required this.category,
     required this.viewModel,
+    this.app,
   });
 
   @override
@@ -38,7 +42,11 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => TipDetailScreen(tipId: tip.id, viewModel: _vm),
+        builder: (_) => TipDetailScreen(
+          tipId: tip.id,
+          viewModel: _vm,
+          app: widget.app,
+        ),
       ),
     );
   }
@@ -46,7 +54,7 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: _vm,
+      listenable: Listenable.merge([_vm, if (widget.app != null) widget.app!]),
       builder: (context, _) => _buildScreen(context),
     );
   }
@@ -114,9 +122,9 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
                   ],
                   TextField(
                   controller: _searchController,
-                  decoration: InputDecoration(
+                  decoration: AppTheme.searchDecoration(
+                    context,
                     hintText: 'Search in ${widget.category.label}...',
-                    prefixIcon: const Icon(Icons.search, size: 20),
                     suffixIcon: _query.isNotEmpty
                         ? IconButton(
                             tooltip: 'Clear search',
@@ -202,10 +210,11 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
   }
 
   Widget _buildTipCard(ThemeData theme, Tip tip) {
+    final saved = widget.app?.isTipSaved(tip.id) ?? false;
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16),
         onTap: () => _openDetail(tip),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -256,6 +265,23 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
                             fontSize: 12,
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
+                        ),
+                      ],
+                      if (widget.app != null) ...[
+                        const SizedBox(width: 2),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          tooltip: saved ? 'Remove from Saved' : 'Save tip',
+                          icon: Icon(
+                            saved ? Icons.bookmark : Icons.bookmark_border,
+                            size: 18,
+                            color: saved
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.onSurfaceVariant,
+                          ),
+                          onPressed: () => widget.app!.toggleSaveTip(tip.id),
                         ),
                       ],
                     ],

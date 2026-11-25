@@ -2,18 +2,21 @@ import 'package:flutter/material.dart';
 
 import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
+import '../state/app_state.dart';
 import '../utils/share_tip.dart';
 import '../viewmodels/guide_view_model.dart';
 
 class TipDetailScreen extends StatefulWidget {
   final String tipId;
   final GuideViewModel viewModel;
+  final AppState? app;
   final ShareTextFn? shareFn;
 
   const TipDetailScreen({
     super.key,
     required this.tipId,
     required this.viewModel,
+    this.app,
     this.shareFn,
   });
 
@@ -69,7 +72,7 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: _vm,
+      listenable: Listenable.merge([_vm, if (widget.app != null) widget.app!]),
       builder: (context, _) => _buildScreen(context),
     );
   }
@@ -93,6 +96,21 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         actions: [
+          if (widget.app != null)
+            IconButton(
+              tooltip: widget.app!.isTipSaved(tip.id)
+                  ? 'Remove from Saved'
+                  : 'Save tip',
+              icon: Icon(
+                widget.app!.isTipSaved(tip.id)
+                    ? Icons.bookmark
+                    : Icons.bookmark_border,
+                color: widget.app!.isTipSaved(tip.id)
+                    ? theme.colorScheme.primary
+                    : null,
+              ),
+              onPressed: () => widget.app!.toggleSaveTip(tip.id),
+            ),
           IconButton(
             tooltip: 'Share tip',
             icon: const Icon(Icons.share_outlined),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/university.dart';
 import '../state/app_state.dart';
+import '../theme.dart';
 import '../utils/open_link.dart';
 
 class CampusScreen extends StatefulWidget {
@@ -295,9 +296,9 @@ class _CampusScreenState extends State<CampusScreen> {
       children: [
         TextField(
           controller: _searchController,
-          decoration: InputDecoration(
+          decoration: AppTheme.searchDecoration(
+            context,
             hintText: 'Search library, gym, canteen, medical...',
-            prefixIcon: const Icon(Icons.search, size: 20),
             suffixIcon: _searchQuery.isNotEmpty
                 ? IconButton(
                     tooltip: 'Clear search',

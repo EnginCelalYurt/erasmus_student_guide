@@ -5,6 +5,8 @@ import '../data/auth_service.dart';
 import '../data/draft_store.dart';
 import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
+import '../state/app_state.dart';
+import '../theme.dart';
 import '../utils/open_link.dart';
 import '../viewmodels/guide_view_model.dart';
 import '../widgets/empty_state.dart';
@@ -14,11 +16,13 @@ import 'tip_detail_screen.dart';
 
 class GuideHomeScreen extends StatefulWidget {
   final GuideViewModel viewModel;
+  final AppState? app;
   final DraftStore? draftStore;
 
   const GuideHomeScreen({
     super.key,
     required this.viewModel,
+    this.app,
     this.draftStore,
   });
 
@@ -68,11 +72,33 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
     };
   }
 
+  Color _colorForCategory(TipCategory category) {
+    return switch (category) {
+      TipCategory.dormitories => const Color(0xFFEA580C),
+      TipCategory.transport => const Color(0xFF2563EB),
+      TipCategory.emergency => const Color(0xFFDC2626),
+      TipCategory.studentLife => const Color(0xFF9333EA),
+      TipCategory.dailyLife => const Color(0xFF0D9488),
+      TipCategory.firstWeeks => const Color(0xFFD97706),
+    };
+  }
+
+  String _initialsForEmail(String email) {
+    final prefix = email.split('@').first.trim();
+    if (prefix.isEmpty) return 'TU';
+    if (prefix.length == 1) return prefix.toUpperCase();
+    return prefix.substring(0, 2).toUpperCase();
+  }
+
   void _openCategory(TipCategory category) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CategoryTipsScreen(category: category, viewModel: _vm),
+        builder: (_) => CategoryTipsScreen(
+          category: category,
+          viewModel: _vm,
+          app: widget.app,
+        ),
       ),
     );
   }
@@ -81,7 +107,11 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => TipDetailScreen(tipId: tip.id, viewModel: _vm),
+        builder: (_) => TipDetailScreen(
+          tipId: tip.id,
+          viewModel: _vm,
+          app: widget.app,
+        ),
       ),
     );
   }
@@ -108,7 +138,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: _vm,
+      listenable: Listenable.merge([_vm, if (widget.app != null) widget.app!]),
       builder: (context, _) => _buildScreen(context),
     );
   }
@@ -152,6 +182,18 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
           ],
         ),
         actions: [
+          if (widget.app != null)
+            IconButton(
+              tooltip: 'Theme',
+              icon: Icon(
+                switch (widget.app!.themeMode) {
+                  ThemeMode.system => Icons.brightness_auto,
+                  ThemeMode.light => Icons.light_mode,
+                  ThemeMode.dark => Icons.dark_mode,
+                },
+              ),
+              onPressed: widget.app!.cycleTheme,
+            ),
           if (user == null)
             TextButton.icon(
               onPressed: _showSignInDialog,
@@ -159,10 +201,64 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
               label: const Text('Sign in'),
             )
           else
-            IconButton(
-              tooltip: 'Sign out',
-              icon: const Icon(Icons.logout),
-              onPressed: _vm.signOut,
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: PopupMenuButton<String>(
+                tooltip: 'Account menu',
+                offset: const Offset(0, 44),
+                onSelected: (value) {
+                  if (value == 'share') {
+                    _openShareTip();
+                  } else if (value == 'sign_out') {
+                    _vm.signOut();
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem<String>(
+                    enabled: false,
+                    child: Text(
+                      user.email,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem<String>(
+                    value: 'share',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit_outlined, size: 18),
+                        SizedBox(width: 10),
+                        Text('Share tip'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'sign_out',
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout, size: 18),
+                        SizedBox(width: 10),
+                        Text('Sign out'),
+                      ],
+                    ),
+                  ),
+                ],
+                child: CircleAvatar(
+                  radius: 17,
+                  backgroundColor: theme.colorScheme.primaryContainer,
+                  child: Text(
+                    _initialsForEmail(user.email),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+              ),
             ),
         ],
       ),
@@ -221,9 +317,9 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                   // 2. Search Field (calling searchTips)
                   TextField(
                     controller: _searchController,
-                    decoration: InputDecoration(
+                    decoration: AppTheme.searchDecoration(
+                      context,
                       hintText: 'Search dorms, tram, BLIK, 112...',
-                      prefixIcon: const Icon(Icons.search),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
                               tooltip: 'Clear search',
@@ -440,6 +536,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
           itemBuilder: (context, index) {
             final cat = categories[index];
             final count = _vm.visibleCount(cat);
+            final catColor = _colorForCategory(cat);
 
             return Semantics(
               button: true,
@@ -447,22 +544,26 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
               label: '${cat.label}, ${count == 1 ? '1 tip' : '$count tips'}',
               child: Card(
               child: InkWell(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(16),
                 onTap: () => _openCategory(cat),
                 child: Padding(
                   padding: const EdgeInsets.all(10),
                   child: Row(
                     children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: catColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         child: Icon(
                           _iconForCategory(cat),
-                          size: 16,
-                          color: theme.colorScheme.primary,
+                          size: 20,
+                          color: catColor,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -500,10 +601,11 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
   }
 
   Widget _buildTipCard(ThemeData theme, Tip tip) {
+    final saved = widget.app?.isTipSaved(tip.id) ?? false;
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16),
         onTap: () => _openTipDetail(tip),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -542,6 +644,23 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                       color: theme.colorScheme.primary,
                     ),
                   ),
+                  if (widget.app != null) ...[
+                    const SizedBox(width: 4),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      tooltip: saved ? 'Remove from Saved' : 'Save tip',
+                      icon: Icon(
+                        saved ? Icons.bookmark : Icons.bookmark_border,
+                        size: 18,
+                        color: saved
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.onSurfaceVariant,
+                      ),
+                      onPressed: () => widget.app!.toggleSaveTip(tip.id),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 6),

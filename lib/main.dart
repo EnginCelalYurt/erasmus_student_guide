@@ -108,12 +108,13 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
             children: [
               GuideHomeScreen(
                 viewModel: widget.guide,
+                app: app,
                 draftStore: widget.draftStore,
               ),
               CampusScreen(app: app),
               CityPlacesScreen(app: app),
               OrientationScreen(app: app),
-              SavedScreen(app: app),
+              SavedScreen(app: app, guide: widget.guide),
             ],
           ),
           bottomNavigationBar: NavigationBar(
