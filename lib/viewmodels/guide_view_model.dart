@@ -15,10 +15,7 @@ enum VoteOutcome { saved, signInRequired, failed }
 /// and read tips, loading state and the user's votes from here. Data access
 /// goes through [TipRepository]; screens never call the repository directly.
 class GuideViewModel extends ChangeNotifier {
-  GuideViewModel({
-    required this._repository,
-    required this._authService,
-  });
+  GuideViewModel({required this._repository, required this._authService});
 
   final TipRepository _repository;
   final AuthService _authService;
@@ -45,11 +42,17 @@ class GuideViewModel extends ChangeNotifier {
   /// True when the app is running with fictional in-memory sample data.
   bool get usingSampleData => _repository is InMemoryTipRepository;
 
-  Future<void> signIn({
+  Future<void> signIn({required String email, required String password}) async {
+    await _authService.signIn(email: email, password: password);
+    _forgetVotesOfOtherUser();
+    notifyListeners();
+  }
+
+  Future<void> register({
     required String email,
     required String password,
   }) async {
-    await _authService.signIn(email: email, password: password);
+    await _authService.register(email: email, password: password);
     _forgetVotesOfOtherUser();
     notifyListeners();
   }
@@ -109,8 +112,10 @@ class GuideViewModel extends ChangeNotifier {
     final user = currentUser;
     if (user == null || _myVotes.containsKey(tipId)) return;
     try {
-      _myVotes[tipId] =
-          await _repository.myVote(tipId: tipId, userId: user.uid);
+      _myVotes[tipId] = await _repository.myVote(
+        tipId: tipId,
+        userId: user.uid,
+      );
       notifyListeners();
     } catch (_) {
       // No network and no saved copy: show no vote; the user can still retry.
@@ -163,8 +168,6 @@ class GuideViewModel extends ChangeNotifier {
   }
 
   void _replaceTip(Tip updated) {
-    _tips = [
-      for (final tip in _tips) tip.id == updated.id ? updated : tip,
-    ];
+    _tips = [for (final tip in _tips) tip.id == updated.id ? updated : tip];
   }
 }
