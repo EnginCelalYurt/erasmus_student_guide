@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+
 import 'data/draft_store.dart';
+import 'data/firebase_auth_service.dart';
+import 'data/firestore_tip_repository.dart';
 import 'data/fake_auth_service.dart';
 import 'data/in_memory_tip_repository.dart';
 import 'data/local_store.dart';
@@ -16,24 +19,24 @@ import 'viewmodels/guide_view_model.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final store = await SharedPreferencesStore.open();
   runApp(
     UniversityGuideApp(
       draftStore: DraftStore(store),
+      guide: GuideViewModel(
+        repository: FirestoreTipRepository(),
+        authService: FirebaseAuthService(),
+      ),
     ),
   );
 }
 
 class UniversityGuideApp extends StatefulWidget {
   final DraftStore? draftStore;
+  final GuideViewModel? guide;
 
-  const UniversityGuideApp({
-    super.key,
-    this.draftStore,
-  });
+  const UniversityGuideApp({super.key, this.draftStore, this.guide});
 
   @override
   State<UniversityGuideApp> createState() => _UniversityGuideAppState();
@@ -41,11 +44,12 @@ class UniversityGuideApp extends StatefulWidget {
 
 class _UniversityGuideAppState extends State<UniversityGuideApp> {
   final AppState _app = AppState();
-  // The only place that decides which data and sign-in implementation is used.
-  final GuideViewModel _guide = GuideViewModel(
-    repository: InMemoryTipRepository(),
-    authService: FakeAuthService(),
-  );
+  late final GuideViewModel _guide =
+      widget.guide ??
+      GuideViewModel(
+        repository: InMemoryTipRepository(),
+        authService: FakeAuthService(),
+      );
 
   @override
   void initState() {
