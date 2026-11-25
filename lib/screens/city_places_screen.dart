@@ -211,7 +211,9 @@ class _PlaceListItem extends StatelessWidget {
                             iconSize: 20,
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
-                            tooltip: isSaved ? 'Remove Bookmark' : 'Save Place',
+                            tooltip: isSaved
+                                ? 'Remove ${place.name} from saved'
+                                : 'Bookmark ${place.name}',
                             icon: Icon(
                               isSaved ? Icons.bookmark : Icons.bookmark_border,
                               color: isSaved ? theme.colorScheme.primary : null,

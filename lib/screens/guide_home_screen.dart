@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../data/auth_service.dart';
 import '../data/draft_store.dart';
 import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
 import '../utils/open_link.dart';
 import '../viewmodels/guide_view_model.dart';
+import '../widgets/empty_state.dart';
 import 'category_tips_screen.dart';
 import 'share_tip_screen.dart';
 import 'tip_detail_screen.dart';
@@ -96,6 +98,13 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
     );
   }
 
+  Future<void> _showSignInDialog() {
+    return showDialog<void>(
+      context: context,
+      builder: (_) => _SignInDialog(viewModel: _vm),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -112,6 +121,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
     return Scaffold(
       floatingActionButton: _vm.isSignedIn
           ? FloatingActionButton.extended(
+              tooltip: 'Share a new tip',
               onPressed: _openShareTip,
               icon: const Icon(Icons.edit_outlined),
               label: const Text('Share tip'),
@@ -130,44 +140,72 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
               ),
             ),
             Text(
-              user != null ? 'Signed in as ${user.email}' : 'Politechnika Łódzka Campus Guide',
+              user != null
+                  ? 'Signed in as ${user.email}'
+                  : (_vm.usingSampleData
+                      ? 'Demo · Fictional sample data'
+                      : 'Politechnika Łódzka Campus Guide'),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ],
         ),
+        actions: [
+          if (user == null)
+            TextButton.icon(
+              onPressed: _showSignInDialog,
+              icon: const Icon(Icons.login, size: 18),
+              label: const Text('Sign in'),
+            )
+          else
+            IconButton(
+              tooltip: 'Sign out',
+              icon: const Icon(Icons.logout),
+              onPressed: _vm.signOut,
+            ),
+        ],
       ),
-      body: _vm.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+      body: Column(
+        children: [
+          if (_vm.isLoading)
+            Semantics(
+              label: 'Loading tips',
+              child: const LinearProgressIndicator(minHeight: 3),
+            ),
+          Expanded(
+            child: RefreshIndicator(
               onRefresh: _vm.load,
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 36),
                 children: [
-                  // 1. Offline / Saved copy banner (if applicable)
+                  // 1. Offline banner with Retry
                   if (_vm.showingSavedCopy) ...[
                     Material(
-                      color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.7),
+                      color: theme.colorScheme.secondaryContainer,
                       borderRadius: BorderRadius.circular(10),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         child: Row(
                           children: [
                             Icon(
                               Icons.cloud_off_outlined,
-                              size: 16,
+                              size: 18,
                               color: theme.colorScheme.onSecondaryContainer,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Showing saved offline copy · Pull down to refresh',
+                                'Offline, may be outdated',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSecondaryContainer,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
+                            ),
+                            TextButton(
+                              onPressed: _vm.isLoading ? null : _vm.load,
+                              child: const Text('Retry'),
                             ),
                           ],
                         ),
@@ -249,38 +287,50 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
 
                   // 5. Tips List (Ranked & Searched)
                   if (_vm.error != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 40),
-                      child: Center(
-                        child: Text(
-                          _vm.error!,
-                          style: TextStyle(color: theme.colorScheme.error),
-                        ),
-                      ),
+                    EmptyState(
+                      icon: Icons.cloud_off_outlined,
+                      title: 'Could Not Load Tips',
+                      message: _vm.error!,
+                      actionLabel: 'Retry',
+                      onAction: _vm.load,
                     )
-                  else if (tips.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 40),
-                      child: Center(
-                        child: Text(
-                          _searchQuery.trim().isEmpty
-                              ? 'No tips yet.'
-                              : 'No tips found for "$_searchQuery"',
-                          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ),
+                  else if (tips.isEmpty && !_vm.isLoading)
+                    EmptyState(
+                      icon: _searchQuery.trim().isEmpty
+                          ? Icons.lightbulb_outline
+                          : Icons.search_off,
+                      title: _searchQuery.trim().isEmpty
+                          ? 'No Tips Yet'
+                          : 'No Matching Tips',
+                      message: _searchQuery.trim().isEmpty
+                          ? 'Check back soon for advice from TUL students.'
+                          : 'No tips found for "$_searchQuery".',
+                      actionLabel: _searchQuery.trim().isNotEmpty ? 'Clear search' : null,
+                      onAction: _searchQuery.trim().isNotEmpty
+                          ? () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            }
+                          : null,
                     )
                   else
                     ...tips.map((tip) => _buildTipCard(theme, tip)),
                 ],
               ),
             ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _build112Banner(ThemeData theme) {
-    return Material(
-      color: theme.colorScheme.errorContainer.withValues(alpha: 0.75),
+    return Semantics(
+      button: true,
+      excludeSemantics: true,
+      label: 'Call 112 Emergency Helpline, free multilingual operator. Long press to copy number.',
+      child: Material(
+        color: theme.colorScheme.errorContainer.withValues(alpha: 0.75),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.3)),
@@ -338,11 +388,12 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                             color: theme.colorScheme.error.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: const Text(
+                          child: Text(
                             'FREE',
                             style: TextStyle(
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onErrorContainer,
                             ),
                           ),
                         ),
@@ -366,6 +417,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -389,7 +441,11 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
             final cat = categories[index];
             final count = _vm.visibleCount(cat);
 
-            return Card(
+            return Semantics(
+              button: true,
+              excludeSemantics: true,
+              label: '${cat.label}, ${count == 1 ? '1 tip' : '$count tips'}',
+              child: Card(
               child: InkWell(
                 borderRadius: BorderRadius.circular(10),
                 onTap: () => _openCategory(cat),
@@ -435,6 +491,7 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                   ),
                 ),
               ),
+            ),
             );
           },
         );
@@ -528,6 +585,105 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SignInDialog extends StatefulWidget {
+  final GuideViewModel viewModel;
+
+  const _SignInDialog({required this.viewModel});
+
+  @override
+  State<_SignInDialog> createState() => _SignInDialogState();
+}
+
+class _SignInDialogState extends State<_SignInDialog> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  String? _errorText;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() {
+      _busy = true;
+      _errorText = null;
+    });
+    try {
+      await widget.viewModel.signIn(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+      if (mounted) Navigator.pop(context);
+    } on AuthException catch (e) {
+      if (mounted) setState(() => _errorText = e.message);
+    } catch (_) {
+      if (mounted) setState(() => _errorText = 'Sign-in failed. Try again.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('TUL Student Sign-In'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Use your @edu.p.lodz.pl address to vote and share tips.',
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _emailController,
+            enabled: !_busy,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'TUL e-mail',
+              hintText: '123456@edu.p.lodz.pl',
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _passwordController,
+            enabled: !_busy,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'Password',
+            ),
+            onSubmitted: (_) => _busy ? null : _submit(),
+          ),
+          if (_errorText != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              _errorText!,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _busy ? null : _submit,
+          child: Text(_busy ? 'Signing in...' : 'Sign in'),
+        ),
+      ],
     );
   }
 }

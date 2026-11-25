@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
 import '../viewmodels/guide_view_model.dart';
+import '../widgets/empty_state.dart';
 import 'tip_detail_screen.dart';
 
 class CategoryTipsScreen extends StatefulWidget {
@@ -65,12 +66,53 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
-      body: _vm.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-              children: [
-                TextField(
+      body: Column(
+        children: [
+          if (_vm.isLoading)
+            Semantics(
+              label: 'Loading category tips',
+              child: const LinearProgressIndicator(minHeight: 3),
+            ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _vm.load,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+                children: [
+                  if (_vm.showingSavedCopy) ...[
+                    Material(
+                      color: theme.colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.cloud_off_outlined,
+                              size: 18,
+                              color: theme.colorScheme.onSecondaryContainer,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Offline, may be outdated',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSecondaryContainer,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: _vm.isLoading ? null : _vm.load,
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
                     hintText: 'Search in ${widget.category.label}...',
@@ -121,22 +163,41 @@ class _CategoryTipsScreenState extends State<CategoryTipsScreen> {
                   ],
                 ),
                 const SizedBox(height: 14),
-                if (tips.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 40),
-                    child: Center(
-                      child: Text(
-                        _query.trim().isEmpty
-                            ? 'No tips in this category yet.'
-                            : 'No tips found matching "$_query"',
-                        style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                    ),
+                if (_vm.error != null)
+                  EmptyState(
+                    icon: Icons.cloud_off_outlined,
+                    title: 'Could Not Load Tips',
+                    message: _vm.error!,
+                    actionLabel: 'Retry',
+                    onAction: _vm.load,
+                  )
+                else if (tips.isEmpty && !_vm.isLoading)
+                  EmptyState(
+                    icon: _query.trim().isEmpty
+                        ? Icons.lightbulb_outline
+                        : Icons.search_off,
+                    title: _query.trim().isEmpty
+                        ? 'No Tips Yet'
+                        : 'No Matching Tips',
+                    message: _query.trim().isEmpty
+                        ? 'No tips in this category yet.'
+                        : 'No tips found matching "$_query".',
+                    actionLabel: _query.trim().isNotEmpty ? 'Clear search' : null,
+                    onAction: _query.trim().isNotEmpty
+                        ? () {
+                            _searchController.clear();
+                            setState(() => _query = '');
+                          }
+                        : null,
                   )
                 else
                   ...tips.map((tip) => _buildTipCard(theme, tip)),
               ],
             ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

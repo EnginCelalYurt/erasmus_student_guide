@@ -28,7 +28,9 @@ class AppTheme {
     final scheme = ColorScheme.fromSeed(
       seedColor: brick,
       primary: const Color(0xFFD57A76),
+      onPrimary: ink,
       secondary: const Color(0xFF8FB39A),
+      onSecondary: ink,
       brightness: Brightness.dark,
     );
     return _finish(ThemeData(useMaterial3: true, colorScheme: scheme));
