@@ -333,90 +333,118 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                     ),
                     onChanged: (val) => setState(() => _searchQuery = val),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  // 3. Categories Grid
-                  Text(
-                    'Explore by Category',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildCategoriesGrid(theme),
-                  const SizedBox(height: 24),
-
-                  // 4. Most Helpful / Newest Rank Selector (Wilson score)
-                  Wrap(
-                    alignment: WrapAlignment.spaceBetween,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Text(
-                        _searchQuery.isNotEmpty
-                            ? 'Search Results (${tips.length})'
-                            : 'Top Advice (${tips.length})',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      SegmentedButton<TipSort>(
-                        segments: const [
-                          ButtonSegment(
-                            value: TipSort.mostHelpful,
-                            label: Text('Most helpful'),
-                            icon: Icon(Icons.thumb_up_outlined, size: 14),
+                  // 3 & 4. Responsive Layout: Top Advice on left + compact Categories on right (wide),
+                  // or compact horizontal Categories strip above Top Advice (narrow).
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth >= 820) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: _buildAdviceSection(theme, tips)),
+                            const SizedBox(width: 20),
+                            SizedBox(
+                              width: 260,
+                              child: _buildCategoriesSidebar(theme),
+                            ),
+                          ],
+                        );
+                      }
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Explore by Category',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
-                          ButtonSegment(
-                            value: TipSort.newest,
-                            label: Text('Newest'),
-                            icon: Icon(Icons.schedule, size: 14),
-                          ),
+                          const SizedBox(height: 8),
+                          _buildCategoriesHorizontal(theme),
+                          const SizedBox(height: 18),
+                          _buildAdviceSection(theme, tips),
                         ],
-                        selected: {_sort},
-                        onSelectionChanged: (set) => setState(() => _sort = set.first),
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                  const SizedBox(height: 12),
-
-                  // 5. Tips List (Ranked & Searched)
-                  if (_vm.error != null)
-                    EmptyState(
-                      icon: Icons.cloud_off_outlined,
-                      title: 'Could Not Load Tips',
-                      message: _vm.error!,
-                      actionLabel: 'Retry',
-                      onAction: _vm.load,
-                    )
-                  else if (tips.isEmpty && !_vm.isLoading)
-                    EmptyState(
-                      icon: _searchQuery.trim().isEmpty
-                          ? Icons.lightbulb_outline
-                          : Icons.search_off,
-                      title: _searchQuery.trim().isEmpty
-                          ? 'No Tips Yet'
-                          : 'No Matching Tips',
-                      message: _searchQuery.trim().isEmpty
-                          ? 'Check back soon for advice from TUL students.'
-                          : 'No tips found for "$_searchQuery".',
-                      actionLabel: _searchQuery.trim().isNotEmpty ? 'Clear search' : null,
-                      onAction: _searchQuery.trim().isNotEmpty
-                          ? () {
-                              _searchController.clear();
-                              setState(() => _searchQuery = '');
-                            }
-                          : null,
-                    )
-                  else
-                    ...tips.map((tip) => _buildTipCard(theme, tip)),
                 ],
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAdviceSection(ThemeData theme, List<Tip> tips) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            Text(
+              _searchQuery.isNotEmpty
+                  ? 'Search Results (${tips.length})'
+                  : 'Top Advice (${tips.length})',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            SegmentedButton<TipSort>(
+              segments: const [
+                ButtonSegment(
+                  value: TipSort.mostHelpful,
+                  label: Text('Most helpful'),
+                  icon: Icon(Icons.thumb_up_outlined, size: 14),
+                ),
+                ButtonSegment(
+                  value: TipSort.newest,
+                  label: Text('Newest'),
+                  icon: Icon(Icons.schedule, size: 14),
+                ),
+              ],
+              selected: {_sort},
+              onSelectionChanged: (set) => setState(() => _sort = set.first),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_vm.error != null)
+          EmptyState(
+            icon: Icons.cloud_off_outlined,
+            title: 'Could Not Load Tips',
+            message: _vm.error!,
+            actionLabel: 'Retry',
+            onAction: _vm.load,
+          )
+        else if (tips.isEmpty && !_vm.isLoading)
+          EmptyState(
+            icon: _searchQuery.trim().isEmpty
+                ? Icons.lightbulb_outline
+                : Icons.search_off,
+            title: _searchQuery.trim().isEmpty
+                ? 'No Tips Yet'
+                : 'No Matching Tips',
+            message: _searchQuery.trim().isEmpty
+                ? 'Check back soon for advice from TUL students.'
+                : 'No tips found for "$_searchQuery".',
+            actionLabel: _searchQuery.trim().isNotEmpty ? 'Clear search' : null,
+            onAction: _searchQuery.trim().isNotEmpty
+                ? () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  }
+                : null,
+          )
+        else
+          ...tips.map((tip) => _buildTipCard(theme, tip)),
+      ],
     );
   }
 
@@ -517,86 +545,118 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
     );
   }
 
-  Widget _buildCategoriesGrid(ThemeData theme) {
-    final categories = TipCategory.values;
+  Widget _buildCategoriesHorizontal(ThemeData theme) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (var i = 0; i < TipCategory.values.length; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            _buildCompactCategoryCard(theme, TipCategory.values[i]),
+          ],
+        ],
+      ),
+    );
+  }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth > 500 ? 3 : 2;
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            childAspectRatio: 2.1,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
+  Widget _buildCategoriesSidebar(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Explore by Category',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w800,
           ),
-          itemCount: categories.length,
-          itemBuilder: (context, index) {
-            final cat = categories[index];
-            final count = _vm.visibleCount(cat);
-            final catColor = _colorForCategory(cat);
+        ),
+        const SizedBox(height: 12),
+        for (var i = 0; i < TipCategory.values.length; i++) ...[
+          if (i > 0) const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: _buildCompactCategoryCard(theme, TipCategory.values[i], expand: true),
+          ),
+        ],
+      ],
+    );
+  }
 
-            return Semantics(
-              button: true,
-              excludeSemantics: true,
-              label: '${cat.label}, ${count == 1 ? '1 tip' : '$count tips'}',
-              child: Card(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () => _openCategory(cat),
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: catColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          _iconForCategory(cat),
-                          size: 20,
-                          color: catColor,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              cat.label,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              count == 1 ? '1 tip' : '$count tips',
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+  Widget _buildCompactCategoryCard(
+    ThemeData theme,
+    TipCategory cat, {
+    bool expand = false,
+  }) {
+    final count = _vm.visibleCount(cat);
+    final catColor = _colorForCategory(cat);
+
+    return Semantics(
+      button: true,
+      excludeSemantics: true,
+      label: '${cat.label}, ${count == 1 ? '1 tip' : '$count tips'}',
+      child: Card(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _openCategory(cat),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Row(
+              mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: catColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    _iconForCategory(cat),
+                    size: 16,
+                    color: catColor,
                   ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                if (expand)
+                  Expanded(
+                    child: Text(
+                      cat.label,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  )
+                else
+                  Text(
+                    cat.label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            );
-          },
-        );
-      },
+          ),
+        ),
+      ),
     );
   }
 
