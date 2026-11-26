@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 
+import 'data/caching_tip_repository.dart';
 import 'data/draft_store.dart';
 import 'data/firebase_auth_service.dart';
 import 'data/firestore_tip_repository.dart';
@@ -25,7 +26,11 @@ Future<void> main() async {
     UniversityGuideApp(
       draftStore: DraftStore(store),
       guide: GuideViewModel(
-        repository: FirestoreTipRepository(),
+        // Keeps the last loaded tips and votes on the device for offline use.
+        repository: CachingTipRepository(
+          inner: FirestoreTipRepository(),
+          store: store,
+        ),
         authService: FirebaseAuthService(),
       ),
     ),

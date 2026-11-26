@@ -1,5 +1,11 @@
 import '../models/tip.dart';
 
+/// The server refused the action, for example because the signed-in user has
+/// not confirmed their TUL e-mail yet.
+class TipPermissionException implements Exception {
+  const TipPermissionException();
+}
+
 abstract class TipRepository {
   Future<List<Tip>> fetchTips({TipCategory? category});
 
