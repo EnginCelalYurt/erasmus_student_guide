@@ -54,7 +54,18 @@ class FirebaseAuthService implements AuthService {
       throw AuthException(_messageFor(e.code));
     }
   }
-
+    @override
+  Future<void> resendVerification() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw const AuthException('Sign in first.');
+    }
+    try {
+      await user.sendEmailVerification();
+    } on FirebaseAuthException catch (e) {
+      throw AuthException(_messageFor(e.code));
+    }
+  }
   @override
   Future<void> signOut() => _auth.signOut();
 

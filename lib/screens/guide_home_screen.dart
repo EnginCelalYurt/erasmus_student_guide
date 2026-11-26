@@ -127,7 +127,23 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
       ),
     );
   }
-
+  Future<void> _resendVerification() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await _vm.resendVerification();
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Verification e-mail sent (check the spam folder).'),
+        ),
+      );
+    } on AuthException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not send the e-mail. Try again.')),
+      );
+    }
+  }
   Future<void> _showSignInDialog() {
     return showDialog<void>(
       context: context,
@@ -207,8 +223,10 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                 tooltip: 'Account menu',
                 offset: const Offset(0, 44),
                 onSelected: (value) {
-                  if (value == 'share') {
+                                    if (value == 'share') {
                     _openShareTip();
+                  } else if (value == 'resend') {
+                    _resendVerification();
                   } else if (value == 'sign_out') {
                     _vm.signOut();
                   }
@@ -232,6 +250,16 @@ class _GuideHomeScreenState extends State<GuideHomeScreen> {
                         Icon(Icons.edit_outlined, size: 18),
                         SizedBox(width: 10),
                         Text('Share tip'),
+                      ],
+                    ),
+                  ),
+                                    const PopupMenuItem<String>(
+                    value: 'resend',
+                    child: Row(
+                      children: [
+                        Icon(Icons.mark_email_unread_outlined, size: 18),
+                        SizedBox(width: 10),
+                        Text('Resend verification e-mail'),
                       ],
                     ),
                   ),
