@@ -56,7 +56,7 @@ class GuideViewModel extends ChangeNotifier {
     _forgetVotesOfOtherUser();
     notifyListeners();
   }
-
+  Future<void> resendVerification() => _authService.resendVerification();
   Future<void> signOut() async {
     await _authService.signOut();
     _forgetVotesOfOtherUser();

@@ -28,6 +28,15 @@ class FakeAuthService implements AuthService {
   }) {
     return signIn(email: email, password: password);
   }
+    int resendCount = 0;
+
+  @override
+  Future<void> resendVerification() async {
+    if (_user == null) {
+      throw const AuthException('Sign in first.');
+    }
+    resendCount++;
+  }
   @override
   Future<void> signOut() async {
     _user = null;
