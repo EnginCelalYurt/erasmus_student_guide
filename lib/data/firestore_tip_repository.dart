@@ -18,7 +18,9 @@ class FirestoreTipRepository implements TipRepository {
     if (category != null) {
       query = query.where('category', isEqualTo: category.name);
     }
-    final snapshot = await query.get();
+    // Ask the server: without this an offline request can answer with an empty
+    // list, which would look like "no tips" and replace the saved copy.
+    final snapshot = await query.get(const GetOptions(source: Source.server));
     final tips = snapshot.docs.map(_tipFromDoc).toList();
     tips.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return tips;
@@ -63,7 +65,20 @@ class FirestoreTipRepository implements TipRepository {
     required String tipId,
     required String userId,
     required VoteValue? value,
-  }) {
+  }) async {
+    try {
+      return await _voteInTransaction(tipId, userId, value);
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') throw const TipPermissionException();
+      rethrow;
+    }
+  }
+
+  Future<Tip> _voteInTransaction(
+    String tipId,
+    String userId,
+    VoteValue? value,
+  ) {
     final tipRef = _tips.doc(tipId);
     final voteRef = tipRef.collection('votes').doc(userId);
 

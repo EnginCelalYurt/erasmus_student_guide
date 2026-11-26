@@ -38,6 +38,9 @@ class _TipDetailScreenState extends State<TipDetailScreen> {
     if (!mounted) return;
     final message = switch (outcome) {
       VoteOutcome.signInRequired => 'Sign in with your TUL e-mail to vote.',
+      VoteOutcome.notAllowed =>
+        'Confirm your TUL e-mail first (check the spam folder), '
+            'then sign out and sign in again.',
       VoteOutcome.failed => 'Could not save your vote. Check your connection.',
       VoteOutcome.saved => null,
     };

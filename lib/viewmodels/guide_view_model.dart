@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../data/auth_service.dart';
@@ -7,7 +9,7 @@ import '../data/tip_repository.dart';
 import '../logic/tip_ranking.dart';
 import '../models/tip.dart';
 
-enum VoteOutcome { saved, signInRequired, failed }
+enum VoteOutcome { saved, signInRequired, notAllowed, failed }
 
 /// Application state for the guide screens.
 ///
@@ -15,10 +17,24 @@ enum VoteOutcome { saved, signInRequired, failed }
 /// and read tips, loading state and the user's votes from here. Data access
 /// goes through [TipRepository]; screens never call the repository directly.
 class GuideViewModel extends ChangeNotifier {
-  GuideViewModel({required this._repository, required this._authService});
+  GuideViewModel({required this._repository, required this._authService}) {
+    // Sign-in can change without a call from this class: a session restored
+    // after a page reload, an expired session or a sign-out elsewhere.
+    _authSubscription = _authService.authStateChanges.listen((_) {
+      _forgetVotesOfOtherUser();
+      notifyListeners();
+    });
+  }
 
   final TipRepository _repository;
   final AuthService _authService;
+  late final StreamSubscription<AppUser?> _authSubscription;
+
+  @override
+  void dispose() {
+    _authSubscription.cancel();
+    super.dispose();
+  }
 
   List<Tip> _tips = [];
   // The signed-in user's votes, cleared whenever a different user signs in.
@@ -142,6 +158,8 @@ class GuideViewModel extends ChangeNotifier {
       _replaceTip(updated);
       notifyListeners();
       return VoteOutcome.saved;
+    } on TipPermissionException {
+      return VoteOutcome.notAllowed;
     } catch (_) {
       return VoteOutcome.failed;
     }
